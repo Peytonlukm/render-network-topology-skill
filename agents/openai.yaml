@@ -1,0 +1,4 @@
+interface:
+  display_name: "Network Topology Renderer"
+  short_description: "Confirm and render refined offline topology diagrams"
+  default_prompt: "Use $render-network-topology to confirm my topology brief and visual profile, then create a refined offline HTML topology diagram."
