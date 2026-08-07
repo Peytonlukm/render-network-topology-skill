@@ -13,6 +13,14 @@
 - HTML/SVG/PNG 导出，以及 JSON 模型保存
 - 无 CDN、无第三方 Python 依赖，可离线打开
 
+## 示例
+
+以下示例由本技能生成，展示同一混合云网络在浅色与深色主题下的效果。
+
+| 浅色主题 | 深色主题 |
+| --- | --- |
+| ![浅色混合云网络拓扑示例](examples/network-topology-light.png) | ![深色混合云网络拓扑示例](examples/network-topology-dark.png) |
+
 ## 安装为 Codex Skill
 
 ### Windows PowerShell
