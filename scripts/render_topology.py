@@ -31,7 +31,17 @@ ICON_TYPES = {
 }
 STATUS_CLASS = {"normal", "highlight", "warning", "alert", "failure", "standby"}
 EDGE_ROLES = {"", "primary", "redundant", "heartbeat", "management"}
-EDGE_ANCHORS = {"top", "right", "bottom", "left"}
+ANCHOR_VECTORS = {
+    "right": (1.0, 0.0),
+    "bottom-right": (0.7071067812, 0.7071067812),
+    "bottom": (0.0, 1.0),
+    "bottom-left": (-0.7071067812, 0.7071067812),
+    "left": (-1.0, 0.0),
+    "top-left": (-0.7071067812, -0.7071067812),
+    "top": (0.0, -1.0),
+    "top-right": (0.7071067812, -0.7071067812),
+}
+EDGE_ANCHORS = set(ANCHOR_VECTORS)
 TYPE_RANK = {
     "internet": 0, "cloud": 0, "cloud-region": 0, "availability-zone": 0, "branch-site": 0,
     "router": 1, "firewall": 1, "waf": 1, "ids-ips": 1, "ddos-protection": 1,
@@ -311,14 +321,9 @@ def node_radius(node: dict[str, Any]) -> float:
 
 def boundary_point(node: dict[str, Any], other: dict[str, Any], anchor: str | None = None) -> tuple[float, float]:
     radius = node_radius(node)
-    if anchor == "top":
-        return node["x"], node["y"] - radius
-    if anchor == "right":
-        return node["x"] + radius, node["y"]
-    if anchor == "bottom":
-        return node["x"], node["y"] + radius
-    if anchor == "left":
-        return node["x"] - radius, node["y"]
+    if anchor in ANCHOR_VECTORS:
+        vector_x, vector_y = ANCHOR_VECTORS[anchor]
+        return node["x"] + radius * vector_x, node["y"] + radius * vector_y
     dx, dy = other["x"] - node["x"], other["y"] - node["y"]
     if abs(dx) >= abs(dy):
         return node["x"] + (radius if dx >= 0 else -radius), node["y"]
@@ -521,8 +526,9 @@ button[data-action="edit"].active { color:var(--blue); border-color:var(--blue);
 .editor-overlay { pointer-events:none; }
 .route-handle { pointer-events:all; fill:var(--surface); stroke:var(--blue); stroke-width:2; cursor:move; }
 .route-handle:hover { fill:var(--blue); }
-.endpoint-handle { pointer-events:all; fill:var(--blue); stroke:var(--surface); stroke-width:2; cursor:crosshair; }
-.endpoint-handle:hover { fill:var(--surface); stroke:var(--blue); }
+.endpoint-handle { pointer-events:all; fill:var(--surface); stroke:var(--blue); stroke-width:1.6; opacity:.82; cursor:crosshair; }
+.endpoint-handle.is-active { fill:var(--blue); stroke:var(--surface); stroke-width:2; opacity:1; }
+.endpoint-handle:hover { fill:var(--surface); stroke:var(--blue); stroke-width:2.2; opacity:1; }
 @media (prefers-reduced-motion: reduce) { .route-handle, .node, .edge { transition:none !important; } }
 '''
 
@@ -550,6 +556,11 @@ def editor_script() -> str:
   const labelElement = id => document.querySelector(`[data-edge-id="${CSS.escape(id)}"].edge-label`);
   const wirelessSignalElement = id => document.querySelector(`[data-edge-id="${CSS.escape(id)}"].wireless-signal`);
   const radius = node => node?.compact ? 32 : 42;
+  const anchorOrder = ['right', 'bottom-right', 'bottom', 'bottom-left', 'left', 'top-left', 'top', 'top-right'];
+  const anchorVectors = {
+    right: [1, 0], 'bottom-right': [Math.SQRT1_2, Math.SQRT1_2], bottom: [0, 1], 'bottom-left': [-Math.SQRT1_2, Math.SQRT1_2],
+    left: [-1, 0], 'top-left': [-Math.SQRT1_2, -Math.SQRT1_2], top: [0, -1], 'top-right': [Math.SQRT1_2, -Math.SQRT1_2],
+  };
   const selectedClass = 'editor-selected';
   let editing = false;
   let selection = null;
@@ -620,20 +631,24 @@ def editor_script() -> str:
   };
   const boundary = (node, other, anchor = null) => {
     const r = radius(node);
-    if (anchor === 'top') return { x: node.x, y: node.y - r };
-    if (anchor === 'right') return { x: node.x + r, y: node.y };
-    if (anchor === 'bottom') return { x: node.x, y: node.y + r };
-    if (anchor === 'left') return { x: node.x - r, y: node.y };
+    const vector = anchorVectors[anchor];
+    if (vector) return { x: node.x + vector[0] * r, y: node.y + vector[1] * r };
     const dx = other.x - node.x;
     const dy = other.y - node.y;
     if (Math.abs(dx) >= Math.abs(dy)) return { x: node.x + (dx >= 0 ? r : -r), y: node.y };
     return { x: node.x, y: node.y + (dy >= 0 ? r : -r) };
   };
+  const autoAnchor = (node, other) => {
+    const dx = other.x - node.x;
+    const dy = other.y - node.y;
+    if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'right' : 'left';
+    return dy >= 0 ? 'bottom' : 'top';
+  };
   const anchorFromPoint = (node, point) => {
     const dx = point.x - node.x;
     const dy = point.y - node.y;
-    if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'right' : 'left';
-    return dy >= 0 ? 'bottom' : 'top';
+    const octant = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+    return anchorOrder[(octant % anchorOrder.length + anchorOrder.length) % anchorOrder.length];
   };
   const midpoint = points => {
     if (points.length < 2) return points[0] || { x: 0, y: 0 };
@@ -753,18 +768,26 @@ def editor_script() -> str:
     if (!edge || edge.locked) return;
     const geometry = pathData(edge);
     [
-      { endpoint: 'source', point: geometry.start },
-      { endpoint: 'target', point: geometry.end },
-    ].forEach(({ endpoint, point }) => {
-      const handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      handle.classList.add('endpoint-handle');
-      handle.setAttribute('r', '6');
-      handle.setAttribute('cx', String(point.x));
-      handle.setAttribute('cy', String(point.y));
-      handle.dataset.edgeId = edge.id;
-      handle.dataset.handleType = 'anchor';
-      handle.dataset.endpoint = endpoint;
-      overlay.appendChild(handle);
+      { endpoint: 'source', node: nodeById(edge.source), other: nodeById(edge.target) },
+      { endpoint: 'target', node: nodeById(edge.target), other: nodeById(edge.source) },
+    ].forEach(({ endpoint, node, other }) => {
+      if (!node || !other) return;
+      const anchorKey = endpoint === 'source' ? 'source_anchor' : 'target_anchor';
+      const activeAnchor = edge[anchorKey] || autoAnchor(node, other);
+      anchorOrder.forEach(anchor => {
+        const point = boundary(node, other, anchor);
+        const handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        handle.classList.add('endpoint-handle');
+        if (anchor === activeAnchor) handle.classList.add('is-active');
+        handle.setAttribute('r', anchor === activeAnchor ? '6' : '4.5');
+        handle.setAttribute('cx', String(point.x));
+        handle.setAttribute('cy', String(point.y));
+        handle.dataset.edgeId = edge.id;
+        handle.dataset.handleType = 'anchor';
+        handle.dataset.endpoint = endpoint;
+        handle.dataset.anchor = anchor;
+        overlay.appendChild(handle);
+      });
     });
     geometry.handlePoints.forEach((point, index) => {
       const handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -886,6 +909,14 @@ def editor_script() -> str:
     const group = event.target.closest?.('.group');
     if (endpointHandle) {
       select('edge', endpointHandle.dataset.edgeId);
+      const edgeTarget = edgeById(endpointHandle.dataset.edgeId);
+      const anchorKey = endpointHandle.dataset.endpoint === 'source' ? 'source_anchor' : 'target_anchor';
+      if (edgeTarget && endpointHandle.dataset.anchor && edgeTarget[anchorKey] !== endpointHandle.dataset.anchor) {
+        const before = copyModel();
+        edgeTarget[anchorKey] = endpointHandle.dataset.anchor;
+        commit(before);
+        renderAll();
+      }
       beginGesture('anchor', endpointHandle.dataset.edgeId, event, null, endpointHandle.dataset.endpoint);
     } else if (handle) {
       select('edge', handle.dataset.edgeId);
