@@ -438,6 +438,14 @@ def path_midpoint(points: list[tuple[float, float]]) -> tuple[float, float]:
     return points[-1]
 
 
+def quadratic_midpoint(start: tuple[float, float], control: tuple[float, float], end: tuple[float, float]) -> tuple[float, float]:
+    """Return the geometric midpoint of a quadratic Bézier connector."""
+    return (
+        0.25 * start[0] + 0.5 * control[0] + 0.25 * end[0],
+        0.25 * start[1] + 0.5 * control[1] + 0.25 * end[1],
+    )
+
+
 def orthogonal_points(start: tuple[float, float], end: tuple[float, float], waypoints: list[dict[str, Any]]) -> list[tuple[float, float]]:
     points = [start]
     for waypoint in waypoints:
@@ -524,7 +532,8 @@ def edge_path(source: dict[str, Any], target: dict[str, Any], style: str, waypoi
         else:
             bow = max(48, min(132, abs(tx - sx) * 0.24 + abs(ty - sy) * 0.16))
             control_x, control_y = mid_x, (sy + ty) / 2 - bow if sy <= ty else (sy + ty) / 2 + bow
-        return f"M {sx:.1f} {sy:.1f} Q {control_x:.1f} {control_y:.1f} {tx:.1f} {ty:.1f}", control_x, control_y, (sx, sy), angle
+        label_x, label_y = quadratic_midpoint((sx, sy), (control_x, control_y), (tx, ty))
+        return f"M {sx:.1f} {sy:.1f} Q {control_x:.1f} {control_y:.1f} {tx:.1f} {ty:.1f}", label_x, label_y, (sx, sy), angle
     if waypoints:
         points = orthogonal_points((sx, sy), (tx, ty), waypoints)
         lx, ly = path_midpoint(points)
@@ -924,8 +933,9 @@ def editor_script() -> str:
       const midX = (start.x + end.x) / 2;
       const bow = Math.max(48, Math.min(132, Math.abs(end.x - start.x) * .24 + Math.abs(end.y - start.y) * .16));
       const control = waypoints[0] || { x: midX, y: (start.y + end.y) / 2 - (start.y <= end.y ? bow : -bow) };
-      const handlePoints = waypoints.length ? waypoints : [quadraticPoint(start, control, end)];
-      return { d: `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`, label: control, handlePoints, start, end, angle };
+      const curveMidpoint = quadraticPoint(start, control, end);
+      const handlePoints = waypoints.length ? waypoints : [curveMidpoint];
+      return { d: `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`, label: curveMidpoint, handlePoints, start, end, angle };
     }
     if (edge.style === 'straight') {
       const points = [start, ...waypoints, end];
