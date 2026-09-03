@@ -23,6 +23,24 @@ Declare: `Enterprise topology for technical operators and stakeholders, with an 
 - Place HA peers in aligned pairs. Use `role: "heartbeat"` for a short dashed link between peers. Use `role: "redundant"` plus `status: "standby"` for a secondary route. Keep the primary and redundant routes in distinct lanes.
 - Fit labels in one or two standardized lines inside the device circle. Prefer concise technical abbreviations. Do not manually offset an individual icon or label.
 
+### Editorial quality gates
+
+- Remove decorative or duplicate elements before changing the palette. Every
+  node, edge, label, and region must explain a device, dependency, boundary,
+  or operational state.
+- Keep one or two deliberate focal highlights. Do not turn every selected or
+  important-looking device blue; use `warning`, `failure`, and `standby` only
+  for their actual operational meanings.
+- Use sans typography for device names and a compact mono face for region and
+  link annotations. Keep text roles consistent across light and dark themes.
+- Use a clean canvas and small-radius region containers. Avoid shadows,
+  gradients, decorative grids, and animation that competes with the topology.
+- For an off-axis wired connection, use an axis-aligned route with subtly
+  rounded corners. Leave visible space around label masks and keep parallel
+  HA/primary lanes separately traceable.
+- Treat more than 24 faithful nodes as a split-or-exception decision: prefer an
+  overview plus zone details, or record why a single canvas is required.
+
 ## Delivery Check
 
 - Verify the diagram at desktop and narrow-screen viewer widths.
@@ -31,3 +49,6 @@ Declare: `Enterprise topology for technical operators and stakeholders, with an 
 - Check that HA, storage, WAN, warning, and failure semantics are distinguishable without relying on animation.
 - Check light and dark themes for contrast and equal visual hierarchy.
 - Confirm no external requests, gradients, decorative animation, blank canvas, device overlap, or unnecessary link crossing.
+- Confirm the generated SVG has a non-empty title and description connected by
+  `aria-labelledby`, and that the confirmed detail, audience, and destination
+  dials are reflected in the brief or model metadata.

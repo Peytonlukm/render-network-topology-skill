@@ -14,6 +14,7 @@ Present this compact brief after inspecting the supplied description and assets,
 - Emphasis: [normal / highlight / warning / failure / standby paths]
 - Visual direction: [restrained Azure-inspired enterprise style, or user direction]
 - Visual profile: [design variance / motion intensity / visual density; enterprise default is 3 / 1 / 5]
+- Design dials: [detail: faithful / balanced / simplified; audience: engineer / mixed / executive; destination: viewer / doc-wide / slide-16x9 / print]
 - Interaction: [viewer only / editable layout with node, group, route, and label handles]
 
 Please confirm these choices, or list the changes before I render the HTML.
@@ -32,4 +33,5 @@ Recommend the following baseline when no preference is supplied:
 | Wireless | Static dotted arc with a wave marker; never a solid line |
 | Effects | Static color, width, and dash changes only; no animation or decorative gradients |
 | Visual profile | Enterprise order: variance 3, motion 1, density 5 |
+| Design dials | Faithful detail, mixed audience, viewer destination |
 | Interaction | Editable layout enabled by default; viewer mode remains the initial state |

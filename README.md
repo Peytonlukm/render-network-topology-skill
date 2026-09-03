@@ -12,6 +12,7 @@
 - 线路端点支持 8 个 45°连接点
 - HTML/SVG/PNG 导出，以及 JSON 模型保存
 - 无 CDN、无第三方 Python 依赖，可离线打开
+- 借鉴 diagram-design 的编辑化约束：层级阅读顺序、克制焦点、圆角正交线路、标签留白和 SVG 可访问性元数据
 
 ## 示例
 
@@ -89,6 +90,8 @@ python scripts/render_topology.py model.json --output outputs/network-topology.h
 ```
 
 完整字段和设备类型见 [`references/topology-model.md`](references/topology-model.md) 与 [`references/icon-catalog.md`](references/icon-catalog.md)。
+
+视觉规范补充见 [`references/diagram-design-alignment.md`](references/diagram-design-alignment.md)，其中定义了 detail、audience、destination 三个可选设计拨杆。
 
 ## 编辑与保存
 

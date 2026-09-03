@@ -31,6 +31,9 @@ ICON_TYPES = {
 }
 STATUS_CLASS = {"normal", "highlight", "warning", "alert", "failure", "standby"}
 EDGE_ROLES = {"", "primary", "redundant", "heartbeat", "management"}
+DETAIL_LEVELS = {"faithful", "balanced", "simplified"}
+AUDIENCE_LEVELS = {"engineer", "mixed", "executive"}
+DESTINATIONS = {"viewer", "doc-wide", "slide-16x9", "print"}
 ANCHOR_VECTORS = {
     "right": (1.0, 0.0),
     "bottom-right": (0.7071067812, 0.7071067812),
@@ -110,6 +113,9 @@ def normalize_model(model: dict[str, Any], theme_override: str | None) -> dict[s
     canvas["grid"] = int(canvas.get("grid", GRID))
     canvas["snap"] = int(canvas.get("snap", canvas["grid"]))
     canvas["editable"] = bool(canvas.get("editable", True))
+    canvas["detail"] = str(canvas.get("detail", "faithful")).lower()
+    canvas["audience"] = str(canvas.get("audience", "mixed")).lower()
+    canvas["destination"] = str(canvas.get("destination", "viewer")).lower()
     if canvas["theme"] not in {"light", "dark"}:
         canvas["theme"] = "light"
     if canvas["layout"] not in {"enterprise", "manual"}:
@@ -118,6 +124,12 @@ def normalize_model(model: dict[str, Any], theme_override: str | None) -> dict[s
         canvas["direction"] = "lr"
     if canvas["edge_style"] not in {"", "straight", "orthogonal", "curved", "wireless"}:
         canvas["edge_style"] = ""
+    if canvas["detail"] not in DETAIL_LEVELS:
+        canvas["detail"] = "faithful"
+    if canvas["audience"] not in AUDIENCE_LEVELS:
+        canvas["audience"] = "mixed"
+    if canvas["destination"] not in DESTINATIONS:
+        canvas["destination"] = "viewer"
     canvas["grid"] = max(8, min(48, canvas["grid"]))
     canvas["snap"] = max(8, min(48, canvas["snap"]))
 
@@ -377,6 +389,38 @@ def polyline_path(points: list[tuple[float, float]]) -> str:
     return " ".join(commands)
 
 
+def rounded_polyline_path(points: list[tuple[float, float]], radius: float = 8.0) -> str:
+    """Return a readable polyline with small rounded corners.
+
+    The route remains axis-aligned when the supplied points are axis-aligned;
+    the arcs only soften a turn and never introduce a decorative curve.
+    """
+    clean: list[tuple[float, float]] = []
+    for point in points:
+        point = (float(point[0]), float(point[1]))
+        if not clean or point != clean[-1]:
+            clean.append(point)
+    if len(clean) < 2:
+        return polyline_path(clean)
+    commands = [f"M {clean[0][0]:.1f} {clean[0][1]:.1f}"]
+    for index in range(1, len(clean) - 1):
+        previous, current, following = clean[index - 1], clean[index], clean[index + 1]
+        incoming = math.hypot(current[0] - previous[0], current[1] - previous[1])
+        outgoing = math.hypot(following[0] - current[0], following[1] - current[1])
+        if incoming < 0.01 or outgoing < 0.01:
+            commands.append(f"L {current[0]:.1f} {current[1]:.1f}")
+            continue
+        corner_radius = min(radius, incoming / 2, outgoing / 2)
+        in_unit = ((current[0] - previous[0]) / incoming, (current[1] - previous[1]) / incoming)
+        out_unit = ((following[0] - current[0]) / outgoing, (following[1] - current[1]) / outgoing)
+        before = (current[0] - in_unit[0] * corner_radius, current[1] - in_unit[1] * corner_radius)
+        after = (current[0] + out_unit[0] * corner_radius, current[1] + out_unit[1] * corner_radius)
+        commands.append(f"L {before[0]:.1f} {before[1]:.1f}")
+        commands.append(f"Q {current[0]:.1f} {current[1]:.1f} {after[0]:.1f} {after[1]:.1f}")
+    commands.append(f"L {clean[-1][0]:.1f} {clean[-1][1]:.1f}")
+    return " ".join(commands)
+
+
 def edge_path(source: dict[str, Any], target: dict[str, Any], style: str, waypoints: list[dict[str, Any]] | None = None, source_anchor: str | None = None, target_anchor: str | None = None) -> tuple[str, float, float, tuple[float, float], float]:
     sx, sy = boundary_point(source, target, source_anchor)
     tx, ty = boundary_point(target, source, target_anchor)
@@ -385,7 +429,8 @@ def edge_path(source: dict[str, Any], target: dict[str, Any], style: str, waypoi
     if style == "straight":
         points = [(sx, sy)] + [(float(point["x"]), float(point["y"])) for point in waypoints] + [(tx, ty)]
         lx, ly = path_midpoint(points)
-        return polyline_path(points), lx, ly, (sx, sy), angle
+        path = rounded_polyline_path(points) if waypoints else polyline_path(points)
+        return path, lx, ly, (sx, sy), angle
     if style in {"curved", "wireless"}:
         mid_x = (sx + tx) / 2
         if waypoints:
@@ -397,13 +442,14 @@ def edge_path(source: dict[str, Any], target: dict[str, Any], style: str, waypoi
     if waypoints:
         points = orthogonal_points((sx, sy), (tx, ty), waypoints)
         lx, ly = path_midpoint(points)
-        return polyline_path(points), lx, ly, (sx, sy), angle
+        return rounded_polyline_path(points), lx, ly, (sx, sy), angle
     if abs(tx - sx) < 1:
         return f"M {sx:.1f} {sy:.1f} L {tx:.1f} {ty:.1f}", sx, (sy + ty) / 2, (sx, sy), angle
     if abs(ty - sy) < 1:
         return f"M {sx:.1f} {sy:.1f} L {tx:.1f} {ty:.1f}", (sx + tx) / 2, sy, (sx, sy), angle
     mid_x = (sx + tx) / 2
-    return f"M {sx:.1f} {sy:.1f} L {mid_x:.1f} {sy:.1f} L {mid_x:.1f} {ty:.1f} L {tx:.1f} {ty:.1f}", mid_x, (sy + ty) / 2, (sx, sy), angle
+    points = [(sx, sy), (mid_x, sy), (mid_x, ty), (tx, ty)]
+    return rounded_polyline_path(points), mid_x, (sy + ty) / 2, (sx, sy), angle
 
 
 def icon_defs() -> str:
@@ -443,16 +489,27 @@ def render_svg(model: dict[str, Any]) -> str:
     width = model["canvas"]["width"]
     height = model["canvas"]["height"]
     nodes = {node["id"]: node for node in model["nodes"]}
-    groups = "".join(
-        f'<g class="group" id="{safe_id(box["id"], "group")}" data-group-id="{safe_text(box["id"])}"><rect x="{box["x"]:.1f}" y="{box["y"]:.1f}" width="{box["w"]:.1f}" height="{box["h"]:.1f}" rx="8"/>'
-        f'<text x="{box["x"] + 28:.1f}" y="{box["y"] + 31:.1f}">{safe_text(box["label"])}</text></g>'
-        for box in group_boxes(model)
-    )
+    group_markup: list[str] = []
+    for box in group_boxes(model):
+        label_width = max(92.0, min(box["w"] - 32.0, len(str(box["label"])) * 11.0 + 34.0))
+        group_markup.append(
+            f'<g class="group" id="{safe_id(box["id"], "group")}" data-group-id="{safe_text(box["id"])}">'
+            f'<rect x="{box["x"]:.1f}" y="{box["y"]:.1f}" width="{box["w"]:.1f}" height="{box["h"]:.1f}" rx="8"/>'
+            f'<rect class="group-label-mask" x="{box["x"] + 16:.1f}" y="{box["y"] + 12:.1f}" width="{label_width:.1f}" height="26" rx="4"/>'
+            f'<text x="{box["x"] + 28:.1f}" y="{box["y"] + 31:.1f}">{safe_text(box["label"])}</text></g>'
+        )
+    groups = "".join(group_markup)
     edge_markup: list[str] = []
     labels: list[str] = []
     wireless_signals: list[str] = []
     for edge in model["edges"]:
         path, lx, ly, origin, angle = edge_path(nodes[edge["source"]], nodes[edge["target"]], edge["style"], edge.get("waypoints", []), edge.get("source_anchor"), edge.get("target_anchor"))
+        # Keep labels legible without covering the connector stroke. Users can
+        # still fine-tune the final position with label_offset in edit mode.
+        if abs(math.cos(math.radians(angle))) >= abs(math.sin(math.radians(angle))):
+            ly -= 18
+        else:
+            lx += 18
         lx += edge.get("label_offset", {}).get("x", 0)
         ly += edge.get("label_offset", {}).get("y", 0)
         marker = ' marker-end="url(#arrow)"' if edge["direction"] and edge["style"] != "wireless" else ""
@@ -488,7 +545,12 @@ def render_svg(model: dict[str, Any]) -> str:
             f'<circle r="{radius:.1f}"/><svg x="{-icon_size / 2:.1f}" y="{icon_y:.1f}" width="{icon_size}" height="{icon_size}" viewBox="0 0 64 64"><use href="#icon-{node["type"]}"/></svg>'
             f'{label_markup(node)}</g>'
         )
-    return f'''<svg id="topology-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.1f} {height:.1f}" role="img" aria-label="{safe_text(model["title"])}">
+    title_id = safe_id(model["title"], "topology-title")
+    desc_id = safe_id(model["title"], "topology-desc")
+    description = f"{len(model['nodes'])} devices and {len(model['edges'])} connections arranged as a structured network topology."
+    return f'''<svg id="topology-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.1f} {height:.1f}" role="img" aria-labelledby="{title_id} {desc_id}">
+  <title id="{title_id}">{safe_text(model["title"])}</title>
+  <desc id="{desc_id}">{safe_text(description)}</desc>
   <defs>{icon_defs()}<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>
   <g id="viewport"><rect class="canvas-background" width="{width:.1f}" height="{height:.1f}"/>{groups}<g class="edges">{''.join(edge_markup)}</g><g class="wireless-signals">{''.join(wireless_signals)}</g><g class="node-hits">{''.join(node_hit_markup)}</g><g class="edge-labels">{''.join(labels)}</g><g class="nodes">{''.join(node_markup)}</g></g>
 </svg>'''
@@ -687,6 +749,27 @@ def editor_script() -> str:
       y: inverse * inverse * start.y + 2 * inverse * t * control.y + t * t * end.y,
     };
   };
+  const roundedPolyline = (rawPoints, radius = 8) => {
+    const points = rawPoints.filter((point, index, items) => !index || point.x !== items[index - 1].x || point.y !== items[index - 1].y);
+    if (points.length < 2) return points.length ? `M ${points[0].x} ${points[0].y}` : '';
+    const commands = [`M ${points[0].x} ${points[0].y}`];
+    for (let index = 1; index < points.length - 1; index += 1) {
+      const previous = points[index - 1];
+      const current = points[index];
+      const following = points[index + 1];
+      const incoming = Math.hypot(current.x - previous.x, current.y - previous.y);
+      const outgoing = Math.hypot(following.x - current.x, following.y - current.y);
+      if (incoming < .01 || outgoing < .01) { commands.push(`L ${current.x} ${current.y}`); continue; }
+      const corner = Math.min(radius, incoming / 2, outgoing / 2);
+      const inUnit = { x: (current.x - previous.x) / incoming, y: (current.y - previous.y) / incoming };
+      const outUnit = { x: (following.x - current.x) / outgoing, y: (following.y - current.y) / outgoing };
+      const before = { x: current.x - inUnit.x * corner, y: current.y - inUnit.y * corner };
+      const after = { x: current.x + outUnit.x * corner, y: current.y + outUnit.y * corner };
+      commands.push(`L ${before.x} ${before.y}`, `Q ${current.x} ${current.y} ${after.x} ${after.y}`);
+    }
+    commands.push(`L ${points[points.length - 1].x} ${points[points.length - 1].y}`);
+    return commands.join(' ');
+  };
   const pathData = edge => {
     const source = nodeById(edge.source);
     const target = nodeById(edge.target);
@@ -704,19 +787,26 @@ def editor_script() -> str:
     }
     if (edge.style === 'straight') {
       const points = [start, ...waypoints, end];
-      return { d: points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '), label: midpoint(points), handlePoints: waypoints.length ? waypoints : [midpoint(points)], start, end, angle };
+      return { d: waypoints.length ? roundedPolyline(points) : points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '), label: midpoint(points), handlePoints: waypoints.length ? waypoints : [midpoint(points)], start, end, angle };
     }
     const points = orthogonalPoints(start, end, waypoints);
     const handlePoints = waypoints.length ? waypoints : points.length > 2 ? [points[1]] : [midpoint(points)];
-    return { d: points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '), label: midpoint(points), handlePoints, start, end, angle };
+    return { d: roundedPolyline(points), label: midpoint(points), handlePoints, start, end, angle };
+  };
+  const labelBase = geometry => {
+    const radians = geometry.angle * Math.PI / 180;
+    return Math.abs(Math.cos(radians)) >= Math.abs(Math.sin(radians))
+      ? { x: geometry.label.x, y: geometry.label.y - 18 }
+      : { x: geometry.label.x + 18, y: geometry.label.y };
   };
   const setLabelPosition = (edge, position) => {
     const label = labelElement(edge.id);
     if (!label) return;
     const geometry = pathData(edge);
     const offset = edge.label_offset || { x: 0, y: 0 };
-    const x = geometry.label.x + Number(offset.x || 0);
-    const y = geometry.label.y + Number(offset.y || 0);
+    const base = labelBase(geometry);
+    const x = base.x + Number(offset.x || 0);
+    const y = base.y + Number(offset.y || 0);
     const rect = label.querySelector('rect');
     const text = label.querySelector('text');
     if (!rect || !text) return;
@@ -735,12 +825,15 @@ def editor_script() -> str:
     model.groups.forEach(group => {
       const element = groupElement(group.id);
       const box = element?.querySelector('rect');
+      const mask = element?.querySelector('.group-label-mask');
       const title = element?.querySelector('text');
       if (!box || group.x == null || group.y == null) return;
       box.setAttribute('x', String(group.x));
       box.setAttribute('y', String(group.y));
       box.setAttribute('width', String(group.width));
       box.setAttribute('height', String(group.height));
+      mask?.setAttribute('x', String(group.x + 16));
+      mask?.setAttribute('y', String(group.y + 12));
       title?.setAttribute('x', String(group.x + 28));
       title?.setAttribute('y', String(group.y + 31));
     });
@@ -865,7 +958,8 @@ def editor_script() -> str:
       const edge = edgeById(gesture.id);
       if (edge) {
         const geometry = pathData(edge);
-        edge.label_offset = { x: snap(point.x - geometry.label.x), y: snap(point.y - geometry.label.y) };
+        const base = labelBase(geometry);
+        edge.label_offset = { x: snap(point.x - base.x), y: snap(point.y - base.y) };
       }
     }
     gesture.changed = true;
@@ -986,10 +1080,10 @@ button.export { width:42px; font-size:11px; font-weight:700; } button:hover { ba
 .canvas-wrap { overflow:hidden; position:relative; padding:20px; background:var(--page); }
 #topology-svg { width:100%; height:calc(100vh - 100px); min-height:440px; display:block; background:var(--canvas); border:1px solid var(--border); cursor:grab; user-select:none; touch-action:none; }
 #topology-svg.is-panning { cursor:grabbing; }.canvas-background { fill:var(--canvas); }
-.group rect { fill:var(--group); stroke:var(--group-stroke); stroke-width:1; }.group text { fill:var(--muted); font-size:14px; font-weight:700; letter-spacing:.45px; }
+.group rect { fill:var(--group); stroke:var(--group-stroke); stroke-width:1; }.group .group-label-mask { stroke:none; }.group text { fill:var(--muted); font-family:"Cascadia Mono", "Consolas", monospace; font-size:13px; font-weight:600; letter-spacing:.55px; }
 .edge { fill:none; stroke:var(--line); stroke-width:1.25; stroke-linecap:round; stroke-linejoin:round; }.edge.highlight { stroke:var(--blue); stroke-width:2; }.edge.warning { stroke:var(--amber); stroke-width:1.9; stroke-dasharray:7 6; }.edge.alert,.edge.failure { stroke:var(--red); stroke-width:1.9; stroke-dasharray:7 5; }.edge.standby { stroke:var(--standby); stroke-width:1.45; stroke-dasharray:3 6; }.edge.heartbeat { stroke-width:1.25; stroke-dasharray:2 5; }.edge.wireless { stroke:var(--blue); stroke-width:1.45; stroke-dasharray:2 8; }.edge.wireless.highlight { stroke-width:1.9; }
-.wireless-signal path { fill:none; stroke:var(--blue); stroke-width:1.3; stroke-linecap:round; }.edge-label rect { fill:var(--surface); stroke:var(--border); }.edge-label text { fill:var(--muted); font-size:11px; font-weight:600; }
-.node circle { fill:var(--surface); stroke:var(--border); stroke-width:1.1; }.node svg { fill:none; stroke:var(--icon); stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }.node text { fill:var(--ink); font-weight:700; letter-spacing:.3px; }.node.highlight circle { stroke:var(--blue); stroke-width:1.8; }.node.highlight svg { stroke:var(--blue); }.node.warning circle { stroke:var(--amber); stroke-width:1.8; }.node.warning svg { stroke:var(--amber); }.node.alert circle,.node.failure circle { stroke:var(--red); stroke-width:1.8; }.node.alert svg,.node.failure svg { stroke:var(--red); }.node.standby circle { stroke:var(--standby); stroke-width:1.35; stroke-dasharray:4 3; }.node.standby svg { stroke:var(--standby); } #arrow path { fill:var(--line); }
+.wireless-signal path { fill:none; stroke:var(--blue); stroke-width:1.3; stroke-linecap:round; }.edge-label rect { fill:var(--surface); stroke:var(--border); }.edge-label text { fill:var(--muted); font-family:"Cascadia Mono", "Consolas", monospace; font-size:10px; font-weight:500; letter-spacing:.2px; }
+.node circle { fill:var(--surface); stroke:var(--border); stroke-width:1.1; }.node svg { fill:none; stroke:var(--icon); stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }.node text { fill:var(--ink); font-family:"Bahnschrift", "Segoe UI", Arial, sans-serif; font-weight:700; letter-spacing:.3px; }.node.highlight circle { stroke:var(--blue); stroke-width:1.8; }.node.highlight svg { stroke:var(--blue); }.node.warning circle { stroke:var(--amber); stroke-width:1.8; }.node.warning svg { stroke:var(--amber); }.node.alert circle,.node.failure circle { stroke:var(--red); stroke-width:1.8; }.node.alert svg,.node.failure svg { stroke:var(--red); }.node.standby circle { stroke:var(--standby); stroke-width:1.35; stroke-dasharray:4 3; }.node.standby svg { stroke:var(--standby); } #arrow path { fill:var(--line); }
 @media (max-width:560px) { .toolbar { min-height:106px; padding:9px 12px; gap:6px; flex-wrap:wrap; align-content:center; }.title { flex:1 0 100%; }.controls { width:100%; justify-content:center; gap:3px; }.canvas-wrap { overflow:auto; padding:10px; } #topology-svg { width:960px; max-width:none; height:calc(100vh - 126px); min-height:440px; } }
 </style></head><body><main class="app" data-theme="__THEME__"><header class="toolbar"><div class="title">__TITLE__</div><div class="controls"><button type="button" data-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button><button type="button" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">-</button><button type="button" data-action="reset" aria-label="Reset view" title="Reset view">&#8634;</button><button type="button" data-action="theme" aria-label="Toggle theme" title="Toggle light or dark theme">&#9680;</button><button type="button" data-action="fullscreen" aria-label="Fullscreen" title="Fullscreen">&#9974;</button><button class="export" type="button" data-action="svg" aria-label="Download SVG" title="Download SVG">SVG</button><button class="export" type="button" data-action="png" aria-label="Download PNG" title="Download PNG">PNG</button></div></header><section class="canvas-wrap">__SVG__</section></main><script id="topology-model" type="application/json">__MODEL__</script>
 <script>(() => { const app=document.querySelector('.app'),svg=document.querySelector('#topology-svg'),viewport=document.querySelector('#viewport'),model=JSON.parse(document.querySelector('#topology-model').textContent); let scale=1,panX=0,panY=0,drag=null; const apply=()=>viewport.setAttribute('transform',`translate(${panX} ${panY}) scale(${scale})`),zoom=amount=>{scale=Math.max(.45,Math.min(2.5,scale+amount));apply()},download=(name,type,data)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),0)},exportSvg=()=>{const copy=svg.cloneNode(true),css=getComputedStyle(app),color=name=>css.getPropertyValue(name).trim(),style=document.createElementNS('http://www.w3.org/2000/svg','style');style.textContent=`.canvas-background{fill:${color('--canvas')}}.group rect{fill:${color('--group')};stroke:${color('--group-stroke')};stroke-width:1}.group text{fill:${color('--muted')};font:700 15px Bahnschrift,Arial}.edge{fill:none;stroke:${color('--line')};stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.edge.highlight{stroke:${color('--blue')};stroke-width:2.3}.edge.warning{stroke:${color('--amber')};stroke-width:2.1;stroke-dasharray:7 6}.edge.alert,.edge.failure{stroke:${color('--red')};stroke-width:2.1;stroke-dasharray:7 5}.edge.standby{stroke:${color('--standby')};stroke-width:1.7;stroke-dasharray:3 6}.edge.wireless{stroke:${color('--blue')};stroke-width:1.7;stroke-dasharray:2 8}.wireless-signal path{fill:none;stroke:${color('--blue')};stroke-width:1.5}.edge-label rect{fill:${color('--surface')};stroke:${color('--border')}}.edge-label text{fill:${color('--muted')};font:600 12px Bahnschrift,Arial}.node circle{fill:${color('--surface')};stroke:${color('--border')};stroke-width:1.2}.node svg{fill:none;stroke:${color('--icon')};stroke-width:2.2}.node text{fill:${color('--ink')};font:700 11px Bahnschrift,Arial}.node.highlight circle{stroke:${color('--blue')};stroke-width:2}.node.highlight svg{stroke:${color('--blue')}}.node.warning circle{stroke:${color('--amber')};stroke-width:2}.node.warning svg{stroke:${color('--amber')}}.node.alert circle,.node.failure circle{stroke:${color('--red')};stroke-width:2}.node.alert svg,.node.failure svg{stroke:${color('--red')}}.node.standby circle{stroke:${color('--standby')};stroke-width:1.5;stroke-dasharray:4 3}.node.standby svg{stroke:${color('--standby')}}#arrow path{fill:${color('--line')}}`;copy.insertBefore(style,copy.firstChild);copy.querySelector('#viewport').removeAttribute('transform');return new XMLSerializer().serializeToString(copy)};document.querySelector('.controls').addEventListener('click',event=>{const action=event.target.closest('button')?.dataset.action;if(!action)return;if(action==='zoom-in')zoom(.15);if(action==='zoom-out')zoom(-.15);if(action==='reset'){scale=1;panX=0;panY=0;apply()}if(action==='theme')app.dataset.theme=app.dataset.theme==='dark'?'light':'dark';if(action==='fullscreen')(document.fullscreenElement?document.exitFullscreen():document.querySelector('.canvas-wrap').requestFullscreen());if(action==='svg')download(`${model.title||'topology'}.svg`,'image/svg+xml;charset=utf-8',exportSvg());if(action==='png'){const source=exportSvg(),image=new Image();image.onload=()=>{const c=document.createElement('canvas');c.width=svg.viewBox.baseVal.width*2;c.height=svg.viewBox.baseVal.height*2;const ctx=c.getContext('2d');ctx.fillStyle=getComputedStyle(app).getPropertyValue('--canvas');ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(image,0,0,c.width,c.height);c.toBlob(blob=>download(`${model.title||'topology'}.png`,'image/png',blob));URL.revokeObjectURL(image.src)};image.src=URL.createObjectURL(new Blob([source],{type:'image/svg+xml;charset=utf-8'}))}});svg.addEventListener('wheel',event=>{event.preventDefault();zoom(event.deltaY>0?-.1:.1)},{passive:false});svg.addEventListener('pointerdown',event=>{drag={x:event.clientX,y:event.clientY,px:panX,py:panY};svg.setPointerCapture(event.pointerId);svg.classList.add('is-panning')});svg.addEventListener('pointermove',event=>{if(!drag)return;const box=svg.getBoundingClientRect();panX=drag.px+(event.clientX-drag.x)*model.canvas.width/box.width;panY=drag.py+(event.clientY-drag.y)*model.canvas.height/box.height;apply()});const stop=()=>{drag=null;svg.classList.remove('is-panning')};svg.addEventListener('pointerup',stop);svg.addEventListener('pointercancel',stop)})();</script></body></html>'''
@@ -1001,9 +1095,9 @@ button.export { width:42px; font-size:11px; font-weight:700; } button:hover { ba
     output = output.replace('</style>', editor_styles() + '</style>', 1)
     # Keep exported SVG line weights aligned with the interactive canvas.
     export_style_updates = (
-        ("font:700 15px Bahnschrift,Arial", "font:700 14px Bahnschrift,Arial"),
+        (".group rect{fill:${color('--group')};stroke:${color('--group-stroke')};stroke-width:1}.group text{fill:${color('--muted')};font:700 15px Bahnschrift,Arial}", ".group rect{fill:${color('--group')};stroke:${color('--group-stroke')};stroke-width:1}.group .group-label-mask{fill:${color('--group')};stroke:none}.group text{fill:${color('--muted')};font:600 13px 'Cascadia Mono','Consolas',monospace;letter-spacing:.55px}"),
         (".edge{fill:none;stroke:${color('--line')};stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.edge.highlight{stroke:${color('--blue')};stroke-width:2.3}.edge.warning{stroke:${color('--amber')};stroke-width:2.1;stroke-dasharray:7 6}.edge.alert,.edge.failure{stroke:${color('--red')};stroke-width:2.1;stroke-dasharray:7 5}.edge.standby{stroke:${color('--standby')};stroke-width:1.7;stroke-dasharray:3 6}.edge.wireless{stroke:${color('--blue')};stroke-width:1.7;stroke-dasharray:2 8}", ".edge{fill:none;stroke:${color('--line')};stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}.edge.highlight{stroke:${color('--blue')};stroke-width:2}.edge.warning{stroke:${color('--amber')};stroke-width:1.9;stroke-dasharray:7 6}.edge.alert,.edge.failure{stroke:${color('--red')};stroke-width:1.9;stroke-dasharray:7 5}.edge.standby{stroke:${color('--standby')};stroke-width:1.45;stroke-dasharray:3 6}.edge.heartbeat{stroke-width:1.25;stroke-dasharray:2 5}.edge.wireless{stroke:${color('--blue')};stroke-width:1.45;stroke-dasharray:2 8}"),
-        (".wireless-signal path{fill:none;stroke:${color('--blue')};stroke-width:1.5}.edge-label rect{fill:${color('--surface')};stroke:${color('--border')}}.edge-label text{fill:${color('--muted')};font:600 12px Bahnschrift,Arial}", ".wireless-signal path{fill:none;stroke:${color('--blue')};stroke-width:1.3}.edge-label rect{fill:${color('--surface')};stroke:${color('--border')}}.edge-label text{fill:${color('--muted')};font:600 11px Bahnschrift,Arial}"),
+        (".wireless-signal path{fill:none;stroke:${color('--blue')};stroke-width:1.5}.edge-label rect{fill:${color('--surface')};stroke:${color('--border')}}.edge-label text{fill:${color('--muted')};font:600 12px Bahnschrift,Arial}", ".wireless-signal path{fill:none;stroke:${color('--blue')};stroke-width:1.3}.edge-label rect{fill:${color('--surface')};stroke:${color('--border')}}.edge-label text{fill:${color('--muted')};font:500 10px 'Cascadia Mono','Consolas',monospace;letter-spacing:.2px}"),
         (".node circle{fill:${color('--surface')};stroke:${color('--border')};stroke-width:1.2}.node svg{fill:none;stroke:${color('--icon')};stroke-width:2.2}.node text{fill:${color('--ink')};font:700 11px Bahnschrift,Arial}.node.highlight circle{stroke:${color('--blue')};stroke-width:2}.node.highlight svg{stroke:${color('--blue')}}.node.warning circle{stroke:${color('--amber')};stroke-width:2}.node.warning svg{stroke:${color('--amber')}}.node.alert circle,.node.failure circle{stroke:${color('--red')};stroke-width:2}.node.alert svg,.node.failure svg{stroke:${color('--red')}}.node.standby circle{stroke:${color('--standby')};stroke-width:1.5;stroke-dasharray:4 3}.node.standby svg{stroke:${color('--standby')}}", ".node circle{fill:${color('--surface')};stroke:${color('--border')};stroke-width:1.1}.node svg{fill:none;stroke:${color('--icon')};stroke-width:1.7}.node text{fill:${color('--ink')};font:700 11px Bahnschrift,Arial}.node.highlight circle{stroke:${color('--blue')};stroke-width:1.8}.node.highlight svg{stroke:${color('--blue')}}.node.warning circle{stroke:${color('--amber')};stroke-width:1.8}.node.warning svg{stroke:${color('--amber')}}.node.alert circle,.node.failure circle{stroke:${color('--red')};stroke-width:1.8}.node.alert svg,.node.failure svg{stroke:${color('--red')}}.node.standby circle{stroke:${color('--standby')};stroke-width:1.35;stroke-dasharray:4 3}.node.standby svg{stroke:${color('--standby')}}"),
     )
     for original, replacement in export_style_updates:
