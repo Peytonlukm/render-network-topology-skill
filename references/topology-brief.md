@@ -10,7 +10,7 @@ Present this compact brief after inspecting the supplied description and assets,
 - Theme: [light / dark]
 - Canvas: [16:9, custom dimensions, or responsive target]
 - Node treatment: [circular built-in icons; standard / compact endpoints]
-- Link routing: [straight axis-aligned / orthogonal / curved / wireless]
+- Link routing: [lane-aware axis-aligned / orthogonal / curved / wireless]
 - Emphasis: [normal / highlight / warning / failure / standby paths]
 - Visual direction: [restrained Azure-inspired enterprise style, or user direction]
 - Visual profile: [design variance / motion intensity / visual density; enterprise default is 3 / 1 / 5]
@@ -30,6 +30,7 @@ Recommend the following baseline when no preference is supplied:
 | Nodes | Circular thin-line icons, standardized internal icon and label positions |
 | Labels | English technology typeface when appropriate; short labels; wrap long labels in the circle |
 | Links | Direct horizontal or vertical straight lines first; one orthogonal bend only when needed |
+| Routing | Lane-aware path allocation for primary, redundant, heartbeat, and management links |
 | Wireless | Static dotted arc with a wave marker; never a solid line |
 | Effects | Static color, width, and dash changes only; no animation or decorative gradients |
 | Visual profile | Enterprise order: variance 3, motion 1, density 5 |

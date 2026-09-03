@@ -13,6 +13,7 @@ Use JSON with `title`, `canvas`, `groups`, `nodes`, and `edges`. The renderer ac
 | `canvas.direction`, `canvas.grid` | no | Enterprise direction is `lr`; grid defaults to 24. |
 | `canvas.edge_style` | no | Optional global `straight`, `orthogonal`, `curved`, or `wireless` override for all links. |
 | `canvas.visual_profile` | no | Optional confirmed visual direction such as `enterprise-orderly`; preserved in the embedded model for future redraws. |
+| `canvas.routing` | no | Optional `lane-aware` (default) or `legacy`. Lane-aware routing reserves separate axis-aligned channels for primary, redundant, heartbeat, and management links; `legacy` keeps the earlier midpoint routing for compatibility experiments. |
 | `canvas.detail`, `canvas.audience`, `canvas.destination` | no | Optional brief dials: `faithful`/`balanced`/`simplified`, `engineer`/`mixed`/`executive`, and `viewer`/`doc-wide`/`slide-16x9`/`print`. They guide extraction, label density, and safe-area decisions without changing explicit connectivity. |
 | `canvas.editable`, `canvas.snap` | no | Enable the embedded first-stage editor and define its grid size. Defaults to editable output with the model grid. |
 | `groups[]` | no | Named visual areas; use `id`, `label`, optional `order`, and manual-only `x`, `y`, `width`, `height`, `padding`. Enterprise rendering may resolve temporary bounds internally; an editable export materializes them as manual coordinates. |
@@ -28,7 +29,7 @@ Use statuses: `normal`, `highlight`, `warning`, `alert`, `failure`, or `standby`
 ```json
 {
   "title": "总部与云端网络拓扑",
-  "canvas": { "width": 1440, "height": 900, "theme": "light", "layout": "enterprise", "direction": "lr", "grid": 24, "snap": 24, "editable": true, "visual_profile": "enterprise-orderly", "detail": "faithful", "audience": "mixed", "destination": "viewer" },
+  "canvas": { "width": 1440, "height": 900, "theme": "light", "layout": "enterprise", "direction": "lr", "grid": 24, "snap": 24, "editable": true, "visual_profile": "enterprise-orderly-plus", "routing": "lane-aware", "detail": "faithful", "audience": "mixed", "destination": "viewer" },
   "groups": [
     { "id": "internet", "label": "公网与云服务", "order": 0 },
     { "id": "hq", "label": "总部数据中心", "order": 1 },

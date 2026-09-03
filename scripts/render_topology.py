@@ -34,6 +34,14 @@ EDGE_ROLES = {"", "primary", "redundant", "heartbeat", "management"}
 DETAIL_LEVELS = {"faithful", "balanced", "simplified"}
 AUDIENCE_LEVELS = {"engineer", "mixed", "executive"}
 DESTINATIONS = {"viewer", "doc-wide", "slide-16x9", "print"}
+VISUAL_PROFILES = {"enterprise-orderly", "enterprise-orderly-plus", "compact-ops", "editorial-quiet"}
+ROUTING_PROFILES = {"lane-aware", "legacy"}
+VISUAL_TOKENS = {
+    "enterprise-orderly-plus": {
+        "light": {"page": "#EEF3F7", "surface": "#FFFFFF", "canvas": "#FAFCFE", "ink": "#1C2A38", "muted": "#5F7183", "line": "#94A7B8", "border": "#CFD9E3", "group": "#F3F7FA", "group-stroke": "#BFCEDA", "icon": "#3E556A", "blue": "#2F6EA8", "amber": "#A96F1A", "red": "#B64F55", "standby": "#718096"},
+        "dark": {"page": "#0E1822", "surface": "#152432", "canvas": "#111C27", "ink": "#E6EEF5", "muted": "#9AABBC", "line": "#64798C", "border": "#304558", "group": "#162735", "group-stroke": "#40596D", "icon": "#B7C6D3", "blue": "#78AFE0", "amber": "#D7A34F", "red": "#E2767D", "standby": "#A3B0C0"},
+    },
+}
 ANCHOR_VECTORS = {
     "right": (1.0, 0.0),
     "bottom-right": (0.7071067812, 0.7071067812),
@@ -116,6 +124,8 @@ def normalize_model(model: dict[str, Any], theme_override: str | None) -> dict[s
     canvas["detail"] = str(canvas.get("detail", "faithful")).lower()
     canvas["audience"] = str(canvas.get("audience", "mixed")).lower()
     canvas["destination"] = str(canvas.get("destination", "viewer")).lower()
+    canvas["visual_profile"] = str(canvas.get("visual_profile", "enterprise-orderly-plus")).lower()
+    canvas["routing"] = str(canvas.get("routing", "lane-aware")).lower()
     if canvas["theme"] not in {"light", "dark"}:
         canvas["theme"] = "light"
     if canvas["layout"] not in {"enterprise", "manual"}:
@@ -130,6 +140,10 @@ def normalize_model(model: dict[str, Any], theme_override: str | None) -> dict[s
         canvas["audience"] = "mixed"
     if canvas["destination"] not in DESTINATIONS:
         canvas["destination"] = "viewer"
+    if canvas["visual_profile"] not in VISUAL_PROFILES:
+        canvas["visual_profile"] = "enterprise-orderly-plus"
+    if canvas["routing"] not in ROUTING_PROFILES:
+        canvas["routing"] = "lane-aware"
     canvas["grid"] = max(8, min(48, canvas["grid"]))
     canvas["snap"] = max(8, min(48, canvas["snap"]))
 
@@ -300,6 +314,74 @@ def apply_enterprise_layout(model: dict[str, Any]) -> None:
     model["groups"] = groups
 
 
+def assign_auto_routes(model: dict[str, Any]) -> None:
+    """Reserve readable orthogonal lanes for automatically laid-out links.
+
+    The route is still stored in the existing ``waypoints`` field, so the
+    editor, SVG export, and agent hand-off all use exactly the same geometry.
+    Manual routes are never replaced, and legacy routing can opt out through
+    ``canvas.routing: "legacy"``.
+    """
+    canvas = model["canvas"]
+    if canvas.get("layout") == "manual" or canvas.get("routing") == "legacy":
+        return
+    nodes = {node["id"]: node for node in model["nodes"]}
+    grid = canvas["grid"]
+    occupied: dict[tuple[str, int, int, int], set[int]] = {}
+    role_bias = {"primary": 0, "": 0, "management": -32, "heartbeat": 32, "redundant": 64}
+
+    def candidate_values(preferred: float, bias: int) -> list[float]:
+        offsets = [bias, 0, 32, -32, 64, -64, 96, -96, 128, -128]
+        return [snap(preferred + offset, grid) for offset in offsets]
+
+    def clear_lane(axis: str, value: float, start: dict[str, Any], end: dict[str, Any]) -> bool:
+        if axis == "x":
+            low, high = sorted((start["y"], end["y"]))
+            for node in model["nodes"]:
+                if node["id"] in {start["id"], end["id"]}:
+                    continue
+                if low - node_radius(node) - 16 <= node["y"] <= high + node_radius(node) + 16 and abs(node["x"] - value) <= node_radius(node) + 16:
+                    return False
+            return True
+        low, high = sorted((start["x"], end["x"]))
+        for node in model["nodes"]:
+            if node["id"] in {start["id"], end["id"]}:
+                continue
+            if low - node_radius(node) - 16 <= node["x"] <= high + node_radius(node) + 16 and abs(node["y"] - value) <= node_radius(node) + 16:
+                return False
+        return True
+
+    for edge in model["edges"]:
+        if edge["style"] not in {"straight", "orthogonal"} or edge.get("waypoints"):
+            continue
+        source, target = nodes[edge["source"]], nodes[edge["target"]]
+        sx, sy = boundary_point(source, target, edge.get("source_anchor"))
+        tx, ty = boundary_point(target, source, edge.get("target_anchor"))
+        if abs(tx - sx) < 1 or abs(ty - sy) < 1:
+            continue
+        axis = "x" if abs(tx - sx) >= abs(ty - sy) else "y"
+        span_start, span_end = sorted((round(sy if axis == "x" else sx), round(ty if axis == "x" else tx)))
+        cross = round((sx + tx) / 2) if axis == "x" else round((sy + ty) / 2)
+        key = (axis, span_start, span_end, cross)
+        used = occupied.setdefault(key, set())
+        preferred = (sx + tx) / 2 if axis == "x" else (sy + ty) / 2
+        chosen: float | None = None
+        for value in candidate_values(preferred, role_bias.get(edge.get("role", ""), 0)):
+            marker = round(value)
+            if marker in used or not clear_lane(axis, value, source, target):
+                continue
+            chosen = value
+            used.add(marker)
+            break
+        if chosen is None:
+            chosen = snap(preferred, grid)
+        if axis == "x":
+            edge["waypoints"] = [{"x": chosen, "y": sy}, {"x": chosen, "y": ty}]
+        else:
+            edge["waypoints"] = [{"x": sx, "y": chosen}, {"x": tx, "y": chosen}]
+        edge["_auto_route"] = True
+
+
 def group_boxes(model: dict[str, Any]) -> list[dict[str, Any]]:
     boxes: list[dict[str, Any]] = []
     nodes_by_group: dict[str, list[dict[str, Any]]] = {}
@@ -427,9 +509,13 @@ def edge_path(source: dict[str, Any], target: dict[str, Any], style: str, waypoi
     angle = math.degrees(math.atan2(ty - sy, tx - sx))
     waypoints = waypoints or []
     if style == "straight":
-        points = [(sx, sy)] + [(float(point["x"]), float(point["y"])) for point in waypoints] + [(tx, ty)]
+        if waypoints or (abs(tx - sx) >= 1 and abs(ty - sy) >= 1):
+            points = orthogonal_points((sx, sy), (tx, ty), waypoints)
+            path = rounded_polyline_path(points)
+        else:
+            points = [(sx, sy), (tx, ty)]
+            path = polyline_path(points)
         lx, ly = path_midpoint(points)
-        path = rounded_polyline_path(points) if waypoints else polyline_path(points)
         return path, lx, ly, (sx, sy), angle
     if style in {"curved", "wireless"}:
         mid_x = (sx + tx) / 2
@@ -450,6 +536,59 @@ def edge_path(source: dict[str, Any], target: dict[str, Any], style: str, waypoi
     mid_x = (sx + tx) / 2
     points = [(sx, sy), (mid_x, sy), (mid_x, ty), (tx, ty)]
     return rounded_polyline_path(points), mid_x, (sy + ty) / 2, (sx, sy), angle
+
+
+def label_base_position(x: float, y: float, angle: float) -> tuple[float, float]:
+    radians = math.radians(angle)
+    return (x, y - 18) if abs(math.cos(radians)) >= abs(math.sin(radians)) else (x + 18, y)
+
+
+def label_box(x: float, y: float, width: float) -> tuple[float, float, float, float]:
+    return (x - width / 2, y - 13, x + width / 2, y + 13)
+
+
+def boxes_overlap(first: tuple[float, float, float, float], second: tuple[float, float, float, float], gap: float = 8.0) -> bool:
+    return not (first[2] + gap < second[0] or second[2] + gap < first[0] or first[3] + gap < second[1] or second[3] + gap < first[1])
+
+
+def assign_auto_label_offsets(model: dict[str, Any]) -> None:
+    """Nudge untouched labels onto a clear grid slot near their route."""
+    if model["canvas"].get("routing") == "legacy":
+        return
+    nodes = {node["id"]: node for node in model["nodes"]}
+    occupied: list[tuple[float, float, float, float]] = []
+    for edge in model["edges"]:
+        if not edge.get("label"):
+            continue
+        path, lx, ly, _, angle = edge_path(nodes[edge["source"]], nodes[edge["target"]], edge["style"], edge.get("waypoints", []), edge.get("source_anchor"), edge.get("target_anchor"))
+        del path
+        base_x, base_y = label_base_position(lx, ly, angle)
+        label_width = max(64.0, min(156.0, len(edge["label"]) * 9.0 + 26.0))
+        raw_offset = edge.get("label_offset", {})
+        has_manual_offset = bool(raw_offset.get("x", 0) or raw_offset.get("y", 0)) if isinstance(raw_offset, dict) else False
+        if has_manual_offset:
+            x = base_x + float(raw_offset.get("x", 0))
+            y = base_y + float(raw_offset.get("y", 0))
+            occupied.append(label_box(x, y, label_width))
+            continue
+        horizontal = abs(math.cos(math.radians(angle))) >= abs(math.sin(math.radians(angle)))
+        offsets = [(0, 0)]
+        for distance in (24, 48, 72, 96, 120, 144):
+            offsets.extend([(0, -distance), (0, distance)] if horizontal else [(-distance, 0), (distance, 0)])
+        chosen = (0.0, 0.0)
+        for delta_x, delta_y in offsets:
+            x, y = base_x + delta_x, base_y + delta_y
+            candidate = label_box(x, y, label_width)
+            node_collision = any(
+                boxes_overlap(candidate, label_box(node["x"], node["y"], node_radius(node) * 2 + 8), gap=2)
+                for node in model["nodes"]
+                if node["id"] not in {edge["source"], edge["target"]}
+            )
+            if not node_collision and not any(boxes_overlap(candidate, previous) for previous in occupied):
+                chosen = (delta_x, delta_y)
+                break
+        edge["label_offset"] = {"x": chosen[0], "y": chosen[1]}
+        occupied.append(label_box(base_x + chosen[0], base_y + chosen[1], label_width))
 
 
 def icon_defs() -> str:
@@ -562,6 +701,9 @@ def safe_json(model: dict[str, Any]) -> str:
     for group in export_model.get("groups", []):
         if isinstance(group, dict):
             group.pop("_layout_box", None)
+    for edge in export_model.get("edges", []):
+        if isinstance(edge, dict):
+            edge.pop("_auto_route", None)
     return json.dumps(export_model, ensure_ascii=False, indent=2).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
@@ -787,7 +929,9 @@ def editor_script() -> str:
     }
     if (edge.style === 'straight') {
       const points = [start, ...waypoints, end];
-      return { d: waypoints.length ? roundedPolyline(points) : points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '), label: midpoint(points), handlePoints: waypoints.length ? waypoints : [midpoint(points)], start, end, angle };
+      const offAxis = Math.abs(end.x - start.x) >= 1 && Math.abs(end.y - start.y) >= 1;
+      const routed = waypoints.length || offAxis ? orthogonalPoints(start, end, waypoints) : points;
+      return { d: waypoints.length || offAxis ? roundedPolyline(routed) : points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '), label: midpoint(routed), handlePoints: waypoints.length ? waypoints : [midpoint(routed)], start, end, angle };
     }
     const points = orthogonalPoints(start, end, waypoints);
     const handlePoints = waypoints.length ? waypoints : points.length > 2 ? [points[1]] : [midpoint(points)];
@@ -1059,10 +1203,23 @@ def editor_script() -> str:
 })();</script>'''
 
 
+def visual_profile_css(profile: str) -> str:
+    """Return optional token overrides for a named visual profile."""
+    tokens = VISUAL_TOKENS.get(profile)
+    if not tokens:
+        return ""
+    blocks: list[str] = []
+    for theme, values in tokens.items():
+        declarations = "; ".join(f"--{key}:{value}" for key, value in values.items())
+        blocks.append(f'.app[data-visual-profile="{safe_text(profile)}"][data-theme="{theme}"] {{ {declarations}; }}')
+    return "\n" + "\n".join(blocks) + "\n"
+
+
 def render_html(model: dict[str, Any]) -> str:
     svg = render_svg(model)
     title = safe_text(model["title"])
     theme = model["canvas"]["theme"]
+    profile = safe_text(model["canvas"].get("visual_profile", "enterprise-orderly-plus"))
     template = r'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>__TITLE__</title>
 <style>
@@ -1085,14 +1242,14 @@ button.export { width:42px; font-size:11px; font-weight:700; } button:hover { ba
 .wireless-signal path { fill:none; stroke:var(--blue); stroke-width:1.3; stroke-linecap:round; }.edge-label rect { fill:var(--surface); stroke:var(--border); }.edge-label text { fill:var(--muted); font-family:"Cascadia Mono", "Consolas", monospace; font-size:10px; font-weight:500; letter-spacing:.2px; }
 .node circle { fill:var(--surface); stroke:var(--border); stroke-width:1.1; }.node svg { fill:none; stroke:var(--icon); stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }.node text { fill:var(--ink); font-family:"Bahnschrift", "Segoe UI", Arial, sans-serif; font-weight:700; letter-spacing:.3px; }.node.highlight circle { stroke:var(--blue); stroke-width:1.8; }.node.highlight svg { stroke:var(--blue); }.node.warning circle { stroke:var(--amber); stroke-width:1.8; }.node.warning svg { stroke:var(--amber); }.node.alert circle,.node.failure circle { stroke:var(--red); stroke-width:1.8; }.node.alert svg,.node.failure svg { stroke:var(--red); }.node.standby circle { stroke:var(--standby); stroke-width:1.35; stroke-dasharray:4 3; }.node.standby svg { stroke:var(--standby); } #arrow path { fill:var(--line); }
 @media (max-width:560px) { .toolbar { min-height:106px; padding:9px 12px; gap:6px; flex-wrap:wrap; align-content:center; }.title { flex:1 0 100%; }.controls { width:100%; justify-content:center; gap:3px; }.canvas-wrap { overflow:auto; padding:10px; } #topology-svg { width:960px; max-width:none; height:calc(100vh - 126px); min-height:440px; } }
-</style></head><body><main class="app" data-theme="__THEME__"><header class="toolbar"><div class="title">__TITLE__</div><div class="controls"><button type="button" data-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button><button type="button" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">-</button><button type="button" data-action="reset" aria-label="Reset view" title="Reset view">&#8634;</button><button type="button" data-action="theme" aria-label="Toggle theme" title="Toggle light or dark theme">&#9680;</button><button type="button" data-action="fullscreen" aria-label="Fullscreen" title="Fullscreen">&#9974;</button><button class="export" type="button" data-action="svg" aria-label="Download SVG" title="Download SVG">SVG</button><button class="export" type="button" data-action="png" aria-label="Download PNG" title="Download PNG">PNG</button></div></header><section class="canvas-wrap">__SVG__</section></main><script id="topology-model" type="application/json">__MODEL__</script>
+</style></head><body><main class="app" data-theme="__THEME__" data-visual-profile="__PROFILE__"><header class="toolbar"><div class="title">__TITLE__</div><div class="controls"><button type="button" data-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button><button type="button" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">-</button><button type="button" data-action="reset" aria-label="Reset view" title="Reset view">&#8634;</button><button type="button" data-action="theme" aria-label="Toggle theme" title="Toggle light or dark theme">&#9680;</button><button type="button" data-action="fullscreen" aria-label="Fullscreen" title="Fullscreen">&#9974;</button><button class="export" type="button" data-action="svg" aria-label="Download SVG" title="Download SVG">SVG</button><button class="export" type="button" data-action="png" aria-label="Download PNG" title="Download PNG">PNG</button></div></header><section class="canvas-wrap">__SVG__</section></main><script id="topology-model" type="application/json">__MODEL__</script>
 <script>(() => { const app=document.querySelector('.app'),svg=document.querySelector('#topology-svg'),viewport=document.querySelector('#viewport'),model=JSON.parse(document.querySelector('#topology-model').textContent); let scale=1,panX=0,panY=0,drag=null; const apply=()=>viewport.setAttribute('transform',`translate(${panX} ${panY}) scale(${scale})`),zoom=amount=>{scale=Math.max(.45,Math.min(2.5,scale+amount));apply()},download=(name,type,data)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),0)},exportSvg=()=>{const copy=svg.cloneNode(true),css=getComputedStyle(app),color=name=>css.getPropertyValue(name).trim(),style=document.createElementNS('http://www.w3.org/2000/svg','style');style.textContent=`.canvas-background{fill:${color('--canvas')}}.group rect{fill:${color('--group')};stroke:${color('--group-stroke')};stroke-width:1}.group text{fill:${color('--muted')};font:700 15px Bahnschrift,Arial}.edge{fill:none;stroke:${color('--line')};stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.edge.highlight{stroke:${color('--blue')};stroke-width:2.3}.edge.warning{stroke:${color('--amber')};stroke-width:2.1;stroke-dasharray:7 6}.edge.alert,.edge.failure{stroke:${color('--red')};stroke-width:2.1;stroke-dasharray:7 5}.edge.standby{stroke:${color('--standby')};stroke-width:1.7;stroke-dasharray:3 6}.edge.wireless{stroke:${color('--blue')};stroke-width:1.7;stroke-dasharray:2 8}.wireless-signal path{fill:none;stroke:${color('--blue')};stroke-width:1.5}.edge-label rect{fill:${color('--surface')};stroke:${color('--border')}}.edge-label text{fill:${color('--muted')};font:600 12px Bahnschrift,Arial}.node circle{fill:${color('--surface')};stroke:${color('--border')};stroke-width:1.2}.node svg{fill:none;stroke:${color('--icon')};stroke-width:2.2}.node text{fill:${color('--ink')};font:700 11px Bahnschrift,Arial}.node.highlight circle{stroke:${color('--blue')};stroke-width:2}.node.highlight svg{stroke:${color('--blue')}}.node.warning circle{stroke:${color('--amber')};stroke-width:2}.node.warning svg{stroke:${color('--amber')}}.node.alert circle,.node.failure circle{stroke:${color('--red')};stroke-width:2}.node.alert svg,.node.failure svg{stroke:${color('--red')}}.node.standby circle{stroke:${color('--standby')};stroke-width:1.5;stroke-dasharray:4 3}.node.standby svg{stroke:${color('--standby')}}#arrow path{fill:${color('--line')}}`;copy.insertBefore(style,copy.firstChild);copy.querySelector('#viewport').removeAttribute('transform');return new XMLSerializer().serializeToString(copy)};document.querySelector('.controls').addEventListener('click',event=>{const action=event.target.closest('button')?.dataset.action;if(!action)return;if(action==='zoom-in')zoom(.15);if(action==='zoom-out')zoom(-.15);if(action==='reset'){scale=1;panX=0;panY=0;apply()}if(action==='theme')app.dataset.theme=app.dataset.theme==='dark'?'light':'dark';if(action==='fullscreen')(document.fullscreenElement?document.exitFullscreen():document.querySelector('.canvas-wrap').requestFullscreen());if(action==='svg')download(`${model.title||'topology'}.svg`,'image/svg+xml;charset=utf-8',exportSvg());if(action==='png'){const source=exportSvg(),image=new Image();image.onload=()=>{const c=document.createElement('canvas');c.width=svg.viewBox.baseVal.width*2;c.height=svg.viewBox.baseVal.height*2;const ctx=c.getContext('2d');ctx.fillStyle=getComputedStyle(app).getPropertyValue('--canvas');ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(image,0,0,c.width,c.height);c.toBlob(blob=>download(`${model.title||'topology'}.png`,'image/png',blob));URL.revokeObjectURL(image.src)};image.src=URL.createObjectURL(new Blob([source],{type:'image/svg+xml;charset=utf-8'}))}});svg.addEventListener('wheel',event=>{event.preventDefault();zoom(event.deltaY>0?-.1:.1)},{passive:false});svg.addEventListener('pointerdown',event=>{drag={x:event.clientX,y:event.clientY,px:panX,py:panY};svg.setPointerCapture(event.pointerId);svg.classList.add('is-panning')});svg.addEventListener('pointermove',event=>{if(!drag)return;const box=svg.getBoundingClientRect();panX=drag.px+(event.clientX-drag.x)*model.canvas.width/box.width;panY=drag.py+(event.clientY-drag.y)*model.canvas.height/box.height;apply()});const stop=()=>{drag=null;svg.classList.remove('is-panning')};svg.addEventListener('pointerup',stop);svg.addEventListener('pointercancel',stop)})();</script></body></html>'''
-    output = template.replace("__TITLE__", title).replace("__THEME__", theme).replace("__SVG__", svg).replace("__MODEL__", safe_json(model))
+    output = template.replace("__TITLE__", title).replace("__THEME__", theme).replace("__PROFILE__", profile).replace("__SVG__", svg).replace("__MODEL__", safe_json(model))
     editor_toolbar = ''
     if model["canvas"].get("editable", True):
         editor_toolbar = '<button type="button" data-action="edit" aria-label="Edit topology" title="Edit topology">Edit</button><button class="editor-action" type="button" data-action="undo" aria-label="Undo" title="Undo">&#8630;</button><button class="editor-action" type="button" data-action="redo" aria-label="Redo" title="Redo">&#8631;</button><button class="editor-action export" type="button" data-action="save-html" aria-label="Save updated HTML" title="Download updated HTML">HTML</button><button class="editor-action export" type="button" data-action="save-json" aria-label="Save topology JSON" title="Download topology JSON">JSON</button><span class="editor-status" aria-live="polite">VIEW</span>'
     output = output.replace('<div class="controls">', f'<div class="controls">{editor_toolbar}', 1)
-    output = output.replace('</style>', editor_styles() + '</style>', 1)
+    output = output.replace('</style>', visual_profile_css(profile) + editor_styles() + '</style>', 1)
     # Keep exported SVG line weights aligned with the interactive canvas.
     export_style_updates = (
         (".group rect{fill:${color('--group')};stroke:${color('--group-stroke')};stroke-width:1}.group text{fill:${color('--muted')};font:700 15px Bahnschrift,Arial}", ".group rect{fill:${color('--group')};stroke:${color('--group-stroke')};stroke-width:1}.group .group-label-mask{fill:${color('--group')};stroke:none}.group text{fill:${color('--muted')};font:600 13px 'Cascadia Mono','Consolas',monospace;letter-spacing:.55px}"),
@@ -1115,6 +1272,8 @@ def main() -> int:
     try:
         model = normalize_model(load_model(args.model), args.theme)
         apply_enterprise_layout(model)
+        assign_auto_routes(model)
+        assign_auto_label_offsets(model)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(render_html(model), encoding="utf-8")
     except (OSError, ValueError, json.JSONDecodeError, RuntimeError) as error:

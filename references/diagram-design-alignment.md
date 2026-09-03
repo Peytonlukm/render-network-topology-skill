@@ -65,7 +65,7 @@ result:
 
 | Dial | Values | Default |
 | --- | --- | --- |
-| Visual profile | `enterprise-orderly`, `editorial-quiet`, `compact-ops` | `enterprise-orderly` |
+| Visual profile | `enterprise-orderly`, `enterprise-orderly-plus`, `editorial-quiet`, `compact-ops` | `enterprise-orderly-plus` |
 | Detail | `faithful`, `balanced`, `simplified` | `faithful` for topology |
 | Audience | `engineer`, `mixed`, `executive` | `mixed` |
 | Destination | `viewer`, `doc-wide`, `slide-16x9`, `print` | `viewer` |
