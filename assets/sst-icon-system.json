@@ -1,0 +1,53 @@
+{
+  "revision": "sst-v4",
+  "categories": {
+    "router": "network",
+    "core-switch": "network",
+    "firewall": "security",
+    "zero-trust-gateway": "security",
+    "server": "compute",
+    "virtual-machine": "compute",
+    "virtual-switch": "compute",
+    "storage": "storage",
+    "cloud": "cloud",
+    "rack": "facilities",
+    "ups": "facilities",
+    "laptop": "endpoint"
+  },
+  "deployments": {
+    "ha": {
+      "label": "HA",
+      "description": "高可用",
+      "path": "M1 5h6v10H1Z M13 5h6v10h-6Z M7 10h6 M10 7v6"
+    },
+    "stack": {
+      "label": "Stack",
+      "description": "设备堆叠",
+      "path": "M2 2h16v6H2Z M2 12h16v6H2Z M6 8v4 M14 8v4"
+    },
+    "cluster": {
+      "label": "Cluster",
+      "description": "集群",
+      "path": "M7 1h6v6H7Z M1 13h6v6H1Z M13 13h6v6h-6Z M10 7v3 M4 13v-3h12v3"
+    },
+    "mlag": {
+      "label": "MLAG",
+      "description": "跨机箱链路聚合",
+      "path": "M1 1h6v6H1Z M13 1h6v6h-6Z M7 4h6 M4 7v5l6 6 6-6V7 M10 11v7"
+    }
+  },
+  "layout": {
+    "diameter": 84,
+    "compactDiameter": 64,
+    "frameWidth": 2.4,
+    "glyphRatio": 0.6180339887498949,
+    "taggedGlyph": 41.5,
+    "compactTaggedGlyph": 26,
+    "taggedCenterY": -14,
+    "tagHeight": 28,
+    "compactTagHeight": 26,
+    "tagBottomInset": 5,
+    "tagFontSize": 12.5,
+    "compactTagFontSize": 11.5
+  }
+}

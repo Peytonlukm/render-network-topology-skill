@@ -1,0 +1,27 @@
+{
+  "title": "Migration Baseline - Synthetic HA",
+  "canvas": {"width": 1440, "height": 810, "layout": "manual", "theme": "light", "grid": 24, "snap": 24, "editable": true, "routing": "lane-aware", "visual_profile": "enterprise-orderly-plus"},
+  "groups": [
+    {"id": "wan", "label": "WAN", "x": 72, "y": 144, "width": 288, "height": 528},
+    {"id": "security", "label": "SECURITY", "x": 432, "y": 144, "width": 288, "height": 528},
+    {"id": "lan", "label": "LAN", "x": 792, "y": 144, "width": 576, "height": 528}
+  ],
+  "nodes": [
+    {"id": "isp-a", "label": "ISP A", "type": "internet", "group": "wan", "x": 216, "y": 312},
+    {"id": "isp-b", "label": "ISP B", "type": "internet", "group": "wan", "x": 216, "y": 528, "status": "standby"},
+    {"id": "fw-a", "label": "FW A", "type": "firewall", "group": "security", "x": 576, "y": 312, "status": "highlight"},
+    {"id": "fw-b", "label": "FW B", "type": "firewall", "group": "security", "x": 576, "y": 528, "status": "standby"},
+    {"id": "core", "label": "CORE", "type": "core-switch", "group": "lan", "x": 936, "y": 312},
+    {"id": "ap", "label": "AP", "type": "wireless-ap", "group": "lan", "x": 1152, "y": 312},
+    {"id": "client", "label": "Laptop", "type": "laptop", "group": "lan", "x": 1152, "y": 528, "compact": true}
+  ],
+  "edges": [
+    {"id": "wan-a", "source": "isp-a", "target": "fw-a", "label": "Primary", "style": "straight", "role": "primary", "direction": true},
+    {"id": "wan-b", "source": "isp-b", "target": "fw-b", "label": "Backup", "style": "straight", "role": "redundant"},
+    {"id": "ha", "source": "fw-a", "target": "fw-b", "label": "HA", "style": "straight", "role": "heartbeat"},
+    {"id": "lan-a", "source": "fw-a", "target": "core", "style": "straight", "role": "primary"},
+    {"id": "lan-b", "source": "fw-b", "target": "core", "style": "orthogonal", "role": "redundant", "source_anchor": "right", "target_anchor": "bottom", "waypoints": [{"x": 768, "y": 528}, {"x": 936, "y": 528}]},
+    {"id": "uplink", "source": "core", "target": "ap", "style": "straight"},
+    {"id": "radio", "source": "ap", "target": "client", "label": "Wi-Fi", "style": "wireless"}
+  ]
+}

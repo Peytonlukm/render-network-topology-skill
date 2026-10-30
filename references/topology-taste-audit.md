@@ -1,54 +1,28 @@
 # Topology Taste Audit
 
-Use this after the confirmed Topology Brief and before rendering. It adapts only the relevant discipline from frontend taste review to professional topology diagrams.
+Read the approved [v1.0 standard](topology-design-standard.md) for authoritative rules. This checklist replaces the prior left-to-right, circle-internal-label, and standby-dash defaults.
 
-## Enterprise Preset
+## Before drawing
 
-Declare: `Enterprise topology for technical operators and stakeholders, with an orderly Azure-inspired visual language.`
+- Identify the reader's task and a main reading path. Combine local hierarchy, ring, grid, nested, or unconnected layouts as the facts require.
+- Establish real sites and administrative/security/network scopes. Use whitespace and headings for ordinary layers; do not create decorative boundary frames.
+- Preserve topology facts, known endpoint identity, aggregate members, and uncertainty. Unknown links do not appear as confirmed connections.
+- Keep SST categories, deployment modes, operational states, and business colors as separate dimensions.
 
-| Dial | Default | Meaning |
-| --- | --- | --- |
-| `DESIGN_VARIANCE` | 3 | Structured symmetry; only deliberate asymmetry for true hierarchy. |
-| `MOTION_INTENSITY` | 1 | Static paths and static status treatment. |
-| `VISUAL_DENSITY` | 5 | Detailed enough for operations, with protected whitespace. |
+## Visual and routing checks
 
-## Audit Rules
+- Normal SST circles: 84/64px diameter, 2.4px border. Untagged ink: 61.8%, centered. Tagged ink: 41.5/26px, center y=-14. Bottom pills: 28/26px, inset 5px, measured symbol/text centering.
+- Names: outside/below, horizontal, at least 13px, maximum two lines. A unique short display name retains its full name. Six o'clock conflicts move the name to the clear lower side, retaining its obstacle box.
+- Main reading direction can differ locally. Allocate distinct ports about each local axis, in target order, using symmetric pairs where possible. Move unlocked devices before inventing circuitous symmetry.
+- Neutral physical solid lines, logical dashed lines, management dotted lines. Independent main/standby edges keep individual IDs, styles, labels, endpoints, and failure corridors. Never encode standby merely as dashes.
+- Rounded orthogonal paths by default, at most two bends, radii 12/8px. Explicit straight paths stay straight. Necessary diagonals and curves are permitted. No route crosses a device, name, region title, or note box.
+- Ordinary parallel spacing 12/8px. Different failure paths use distinct corridors. Explicit junctions imply connection; unmarked crossings do not.
+- Business overlays share their base path and preserve a visible neutral foundation and arrow. Default to one selected business; use multi-color bands only for explicit comparison with a legend.
+- All ring segments share one skeleton and exact outer-circle attachment, with near-equal arc-length spacing. Ring names stay below unless a documented real conflict requires the confirmed exception. RPL/failure markings preserve the built ring's geometry; business flows must not traverse a failed segment.
+- Explanatory text uses quiet 1px/4px note frames. Line labels stay beside their longest clear attributable segment, not over a stroke.
 
-- Establish a single reading order: ingress, security, core network, services, data/storage, endpoints. Use an alternate order only when the actual architecture requires it.
-- Use the 24px grid. Keep zone title, node center, icon, label, and link-label baselines consistent. Expand a zone before reducing icon, label, or link readability.
-- Keep at least 48px from a regular node to a zone boundary. Separate adjacent zones by at least 48px. Use a minimum 64px lane between a primary route and a redundant or HA route.
-- Use circles for device frames, restrained square-corner or small-radius zones, and one thin-line icon style. Do not add cards, shadows, glows, gradients, decorative grids, or background textures.
-- Use cold neutral surfaces and one restrained Azure-blue accent. Use amber only for WAN/warnings, red only for failure, and gray dashes only for standby or redundancy. Preserve the same semantic hierarchy in light and dark themes.
-- Use direct horizontal or vertical primary links first. Use one orthogonal bend only to change row or column. Never introduce diagonal links. Do not route a link through a node or use a crossing to imply HA.
-- Place HA peers in aligned pairs. Use `role: "heartbeat"` for a short dashed link between peers. Use `role: "redundant"` plus `status: "standby"` for a secondary route. Keep the primary and redundant routes in distinct lanes.
-- Fit labels in one or two standardized lines inside the device circle. Prefer concise technical abbreviations. Do not manually offset an individual icon or label.
+## Delivery
 
-### Editorial quality gates
+Inspect actual HTML, SVG, and PNG in light/dark themes, at source and reduced size, plus a 390px viewer. Check glyph/tag fit, fonts and OFL embedding, title/description metadata, token minima, semantics/legends, aggregate mappings, collisions, bends, crossings and ring continuity. Text and essential graphics use 4.5:1 / 3:1 contrast references on real backgrounds. Offline output makes no network requests.
 
-- Remove decorative or duplicate elements before changing the palette. Every
-  node, edge, label, and region must explain a device, dependency, boundary,
-  or operational state.
-- Keep one or two deliberate focal highlights. Do not turn every selected or
-  important-looking device blue; use `warning`, `failure`, and `standby` only
-  for their actual operational meanings.
-- Use sans typography for device names and a compact mono face for region and
-  link annotations. Keep text roles consistent across light and dark themes.
-- Use a clean canvas and small-radius region containers. Avoid shadows,
-  gradients, decorative grids, and animation that competes with the topology.
-- For an off-axis wired connection, use an axis-aligned route with subtly
-  rounded corners. Leave visible space around label masks and keep parallel
-  HA/primary lanes separately traceable.
-- Treat more than 24 faithful nodes as a split-or-exception decision: prefer an
-  overview plus zone details, or record why a single canvas is required.
-
-## Delivery Check
-
-- Verify the diagram at desktop and narrow-screen viewer widths.
-- Check each zone for balanced proportion and visible breathing room.
-- Check node/label baselines, icon scale, line weights, and all high-importance labels.
-- Check that HA, storage, WAN, warning, and failure semantics are distinguishable without relying on animation.
-- Check light and dark themes for contrast and equal visual hierarchy.
-- Confirm no external requests, gradients, decorative animation, blank canvas, device overlap, or unnecessary link crossing.
-- Confirm the generated SVG has a non-empty title and description connected by
-  `aria-labelledby`, and that the confirmed detail, audience, and destination
-  dials are reflected in the brief or model metadata.
+A fixed visual specimen is not proof of general automatic layout. Unresolved hard constraints require an explicit repair draft and object-specific conflict list. For dense diagrams, compare overview/detail and a compact single page with the user; compact circles/names do not fall below 64/13px.

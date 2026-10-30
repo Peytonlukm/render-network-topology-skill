@@ -1,0 +1,120 @@
+{
+  "title": "总部与云端网络拓扑",
+  "canvas": {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "layout": "enterprise",
+    "direction": "lr",
+    "grid": 24,
+    "snap": 24,
+    "editable": true,
+    "visual_profile": "enterprise-orderly-plus",
+    "routing": "lane-aware",
+    "detail": "faithful",
+    "audience": "mixed",
+    "destination": "viewer"
+  },
+  "groups": [
+    {
+      "id": "internet",
+      "label": "公网与云服务",
+      "order": 0
+    },
+    {
+      "id": "hq",
+      "label": "总部数据中心",
+      "order": 1
+    },
+    {
+      "id": "users",
+      "label": "办公终端",
+      "order": 2
+    }
+  ],
+  "nodes": [
+    {
+      "id": "wan",
+      "label": "Internet",
+      "type": "internet",
+      "group": "internet",
+      "rank": 0
+    },
+    {
+      "id": "fw",
+      "label": "边界防火墙",
+      "type": "firewall",
+      "group": "hq",
+      "rank": 1,
+      "status": "highlight"
+    },
+    {
+      "id": "core",
+      "label": "核心交换机",
+      "type": "switch",
+      "group": "hq",
+      "rank": 2
+    },
+    {
+      "id": "app",
+      "label": "应用服务器",
+      "type": "server",
+      "group": "hq",
+      "rank": 3
+    },
+    {
+      "id": "db",
+      "label": "数据库",
+      "type": "database",
+      "group": "hq",
+      "rank": 3,
+      "status": "standby"
+    },
+    {
+      "id": "pc",
+      "label": "办公终端",
+      "type": "pc",
+      "group": "users",
+      "rank": 4
+    }
+  ],
+  "edges": [
+    {
+      "id": "wan-fw",
+      "source": "wan",
+      "target": "fw",
+      "label": "ISP",
+      "style": "straight",
+      "direction": true,
+      "status": "highlight"
+    },
+    {
+      "id": "fw-core",
+      "source": "fw",
+      "target": "core",
+      "style": "orthogonal"
+    },
+    {
+      "id": "core-app",
+      "source": "core",
+      "target": "app",
+      "label": "HTTPS",
+      "style": "curved"
+    },
+    {
+      "id": "core-db",
+      "source": "core",
+      "target": "db",
+      "label": "SQL",
+      "style": "orthogonal",
+      "status": "standby",
+      "role": "redundant"
+    },
+    {
+      "id": "core-pc",
+      "source": "core",
+      "target": "pc",
+      "style": "straight"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# Preserve the upstream font license byte-for-byte for its recorded SHA-256.
+assets/fonts/IBMPlexSans-LICENSE.txt -text

@@ -1,4 +1,4 @@
 interface:
   display_name: "Network Topology Renderer"
-  short_description: "Confirm and render refined offline topology diagrams"
-  default_prompt: "Use $render-network-topology to confirm my topology brief and visual profile, then create a refined offline HTML topology diagram."
+  short_description: "Create SST topology diagrams from the approved standard"
+  default_prompt: "Use $render-network-topology with the approved design standard and latest bundled SST icons. Reuse confirmed choices, clarify missing topology facts when needed, and create an editable offline HTML topology diagram with verified file exports."

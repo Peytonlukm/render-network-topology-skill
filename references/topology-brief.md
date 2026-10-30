@@ -1,38 +1,16 @@
 # Topology Brief
 
-Present this compact brief after inspecting the supplied description and assets, before generating a new topology or performing a structural re-draw. Fill in each field with either **Confirmed** (explicitly supplied) or **Recommended** (inferred). Ask the user to confirm or revise the brief. Do not produce the final HTML until confirmation.
+Use the [approved standard](topology-design-standard.md). Fill supplied facts as confirmed and inference as recommended. Reuse already confirmed choices for revisions and authorized sample regeneration.
 
-```markdown
-## Topology Brief
+- Purpose, audience, detail and output destination.
+- Actual devices, stable IDs, links, operational states, unknowns, and aggregate members.
+- Main reading path and local composition/direction by region; eight families may combine.
+- Which boundaries are real sites, geography, management, security, networks or capability scope.
+- Light/dark theme, canvas/output size, language, long-name handling.
+- Latest SST symbols, external names, optional HA/Stack/Cluster/MLAG tags, independent runtime status.
+- Connection semantics, physical/logical separation, main/standby identities, business selection/comparison, labels and units.
+- Rounded orthogonal routing by default; explicit line/curve overrides; locked positions and ports; at most two turns unless a specific exception is confirmed.
+- Ring membership/order, ordinary versus geographic view, permitted rotation, RPL/failure facts, external and interior branches.
+- Interaction and capability boundary: V2 manual layout editing, editable HTML/model save and JSON import, or legacy editing; do not promise unfinished automatic layout or adding/removing objects and connections.
 
-- Scope and hierarchy: [groups, devices, primary paths]
-- Labels: [Chinese / English / abbreviations]
-- Theme: [light / dark]
-- Canvas: [16:9, custom dimensions, or responsive target]
-- Node treatment: [circular built-in icons; standard / compact endpoints]
-- Link routing: [lane-aware axis-aligned / orthogonal / curved / wireless]
-- Emphasis: [normal / highlight / warning / failure / standby paths]
-- Visual direction: [restrained Azure-inspired enterprise style, or user direction]
-- Visual profile: [design variance / motion intensity / visual density; enterprise default is 3 / 1 / 5]
-- Design dials: [detail: faithful / balanced / simplified; audience: engineer / mixed / executive; destination: viewer / doc-wide / slide-16x9 / print]
-- Interaction: [viewer only / editable layout with node, group, route, and label handles]
-
-Please confirm these choices, or list the changes before I render the HTML.
-```
-
-Recommend the following baseline when no preference is supplied:
-
-| Parameter | Recommended value |
-| --- | --- |
-| Theme | Light |
-| Canvas | 16:9 with responsive viewer |
-| Zones | 24px grid, generous breathing room, balanced boundaries |
-| Nodes | Circular thin-line icons, standardized internal icon and label positions |
-| Labels | English technology typeface when appropriate; short labels; wrap long labels in the circle |
-| Links | Direct horizontal or vertical straight lines first; one orthogonal bend only when needed |
-| Routing | Lane-aware path allocation for primary, redundant, heartbeat, and management links |
-| Wireless | Static dotted arc with a wave marker; never a solid line |
-| Effects | Static color, width, and dash changes only; no animation or decorative gradients |
-| Visual profile | Enterprise order: variance 3, motion 1, density 5 |
-| Design dials | Faithful detail, mixed audience, viewer destination |
-| Interaction | Editable layout enabled by default; viewer mode remains the initial state |
+Defaults: flat SST light theme, 84px circles (64px compact), names outside/below at least 13px, neutral physical lines, 12/8px corners and parallel spacing, static-first optional business animation. Do not infer links, bandwidth, provider identities, CoS values or HA membership. Clarify a missing choice only when it changes correctness or materially changes the requested output.

@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import html
 import json
 import math
 import re
 import sys
+import xml.etree.ElementTree as ET
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +30,12 @@ ICON_TYPES = {
     "message-queue", "mobile", "monitoring", "nas", "object-storage", "ont", "pc", "printer", "proxy",
     "rack", "router", "san", "sd-wan", "search", "secure-web-gateway", "server", "siem", "storage",
     "subnet", "switch", "tape-library", "thin-client", "ups", "virtual-machine", "vpn-gateway", "vpc",
-    "waf", "web-server", "wireless", "wireless-ap", "wireless-controller", "zero-trust-gateway",
+    "waf", "web-server", "wireless", "wireless-ap", "wireless-controller", "zero-trust-gateway", "virtual-switch",
 }
+SST_ICON_SYSTEM = json.loads((Path(__file__).resolve().parent.parent / 'assets/sst-icon-system.json').read_text(encoding='utf-8'))
+SST_ICON_CATEGORIES = SST_ICON_SYSTEM["categories"]
+SST_DEPLOYMENTS = SST_ICON_SYSTEM["deployments"]
+SST_DEPLOYMENT_POSITIONS = {"bottom"}
 STATUS_CLASS = {"normal", "highlight", "warning", "alert", "failure", "standby"}
 EDGE_ROLES = {"", "primary", "redundant", "heartbeat", "management"}
 DETAIL_LEVELS = {"faithful", "balanced", "simplified"}
@@ -65,7 +72,7 @@ TYPE_RANK = {
     "message-queue": 3, "search": 3, "dns": 3, "dhcp": 3, "directory-service": 3,
     "bastion-host": 3, "monitoring": 3, "siem": 3, "backup": 3, "disaster-recovery": 3,
     "storage": 3, "nas": 3, "san": 3, "object-storage": 3, "tape-library": 3,
-    "vpc": 3, "subnet": 3, "data-center": 3, "rack": 3, "ups": 3,
+    "vpc": 3, "subnet": 3, "data-center": 3, "rack": 3, "ups": 3, "virtual-switch": 2,
     "pc": 4, "laptop": 4, "mobile": 4, "thin-client": 4, "printer": 4,
     "ip-phone": 4, "camera": 4, "iot-device": 4, "industrial-gateway": 4, "endpoint": 4,
 }
@@ -126,6 +133,8 @@ def normalize_model(model: dict[str, Any], theme_override: str | None) -> dict[s
     canvas["destination"] = str(canvas.get("destination", "viewer")).lower()
     canvas["visual_profile"] = str(canvas.get("visual_profile", "enterprise-orderly-plus")).lower()
     canvas["routing"] = str(canvas.get("routing", "lane-aware")).lower()
+    if "icon_set" in canvas:
+        canvas["icon_set"] = "sst" if str(canvas["icon_set"]).lower() == "sst" else "neutral"
     if canvas["theme"] not in {"light", "dark"}:
         canvas["theme"] = "light"
     if canvas["layout"] not in {"enterprise", "manual"}:
@@ -164,6 +173,18 @@ def normalize_model(model: dict[str, Any], theme_override: str | None) -> dict[s
         node["status"] = str(node.get("status", "normal")).lower()
         if node["status"] not in STATUS_CLASS:
             node["status"] = "normal"
+        if "deployment" in node:
+            deployment = str(node["deployment"]).strip().lower()
+            if deployment not in SST_DEPLOYMENTS:
+                raise ValueError(f"Unknown deployment tag: {node['deployment']}")
+            node["deployment"] = deployment
+        if "deployment_position" in node:
+            position = str(node["deployment_position"]).strip().lower()
+            if position in {"top", "top-left", "top-right"}:
+                position = "bottom"  # v3 models adopt the current centered placement.
+            if position not in SST_DEPLOYMENT_POSITIONS:
+                raise ValueError(f"Unknown deployment tag position: {node['deployment_position']}")
+            node["deployment_position"] = position
         node["group"] = str(node["group"]) if node.get("group") is not None else None
         node["rank"] = int(node.get("rank", TYPE_RANK[node["type"]]))
         node["order"] = int(node.get("order", index))
@@ -600,21 +621,132 @@ def assign_auto_label_offsets(model: dict[str, Any]) -> None:
         occupied.append(label_box(base_x + chosen[0], base_y + chosen[1], label_width))
 
 
-def icon_defs() -> str:
+def icon_defs(icon_set: str = "neutral") -> str:
     path = Path(__file__).resolve().parent.parent / "assets" / "device-icons.svg"
     payload = path.read_text(encoding="utf-8")
     match = re.search(r"<defs>(.*)</defs>", payload, flags=re.DOTALL)
     if not match:
         raise RuntimeError("device-icons.svg must contain a defs element.")
-    return match.group(1)
+    definitions = match.group(1)
+    if icon_set == "sst":
+        payload = path.with_name("sst-device-icons.svg").read_text(encoding="utf-8")
+        match = re.search(r"<defs>(.*)</defs>", payload, flags=re.DOTALL)
+        if not match:
+            raise RuntimeError("sst-device-icons.svg must contain a defs element.")
+        definitions += match.group(1)
+    return definitions
 
 
-def label_markup(node: dict[str, Any]) -> str:
+@lru_cache(maxsize=1)
+def sst_styles() -> str:
+    assets = Path(__file__).resolve().parent.parent / "assets"
+    license_text = (assets / 'fonts/IBMPlexSans-LICENSE.txt').read_text(encoding='utf-8')
+    rules = ['/* Embedded unmodified IBM Plex Sans fonts.\n' + license_text + '\n*/']
+    for weight, name in [(400, 'Regular'), (600, 'SemiBold')]:
+        encoded = base64.b64encode((assets / f'fonts/IBMPlexSans-{name}.woff2').read_bytes()).decode('ascii')
+        rules.append(f'@font-face{{font-family:"IBM Plex Sans";font-style:normal;font-weight:{weight};font-display:block;src:url(data:font/woff2;base64,{encoded}) format("woff2")}}')
+    return '\n'.join(rules) + '\n' + (assets / 'sst-theme.css').read_text(encoding='utf-8')
+
+
+@lru_cache(maxsize=1)
+def sst_tag_metrics() -> dict[str, Any]:
+    return json.loads((Path(__file__).resolve().parent.parent / 'assets/sst-tag-metrics.json').read_text(encoding='utf-8'))
+
+
+@lru_cache(maxsize=1)
+def sst_ink_bounds() -> dict[str, tuple[float, ...]]:
+    path = Path(__file__).resolve().parent.parent / "assets" / "sst-device-icons.svg"
+    return {
+        symbol.attrib["id"].removeprefix("sst-icon-"): tuple(map(float, symbol.attrib["data-ink-bounds"].split()))
+        for symbol in ET.fromstring(path.read_text(encoding="utf-8")).iter("{http://www.w3.org/2000/svg}symbol")
+        if "data-ink-bounds" in symbol.attrib
+    }
+
+
+def sst_icon_markup(node: dict[str, Any]) -> str:
+    """Fit plain ink to diameter / phi; reserve a lower slot for tag pills."""
+    bounds = sst_ink_bounds().get(node["type"])
+    if bounds is None or len(bounds) != 4 or min(bounds[2:]) <= 0:
+        raise RuntimeError(f'Missing valid ink bounds for SST icon: {node["type"]}')
+    x, y, width, height = bounds
+    side = max(width, height)
+    size = node_radius(node) * 2 * (math.sqrt(5) - 1) / 2
+    center_y = 0
+    if node.get('deployment') in SST_DEPLOYMENTS:
+        size = 26 if node.get('compact') else 41.5
+        center_y = -14
+    view_x, view_y = x + (width - side) / 2, y + (height - side) / 2
+    return (f'<svg class="node-glyph" x="{-size / 2:.4f}" y="{center_y - size / 2:.4f}" width="{size:.4f}" height="{size:.4f}" '
+            f'viewBox="{view_x:.7f} {view_y:.7f} {side:.7f} {side:.7f}">'
+            f'<use href="#sst-icon-{node["type"]}" width="64" height="64"/></svg>')
+
+
+def sst_deployment_markup(node: dict[str, Any]) -> str:
+    """A structural tag stays larger than, and independent from, status."""
+    tag = SST_DEPLOYMENTS.get(node.get("deployment"))
+    if not tag:
+        return ""
+    compact = node.get("compact", False)
+    height = 26 if compact else 28
+    font_size = 11.5 if compact else 12.5
+    metrics = sst_tag_metrics()
+    text_metrics = metrics['labels'][tag['label']]
+    text_scale = font_size / metrics['em']
+    sx, sy, sw, sh = metrics['symbols'][node['deployment']]
+    symbol_scale = .8
+    symbol_width = sw * symbol_scale
+    text_width = (text_metrics['xMax'] - text_metrics['xMin']) * text_scale
+    content_width = symbol_width + 6 + text_width
+    width = max(56 if compact else 64, math.ceil((content_width + (18 if compact else 22)) / 2) * 2)
+    x = -width / 2
+    y = node_radius(node) - 5 - height
+    text_x = symbol_width + 6 - text_metrics['xMin'] * text_scale
+    text_y = height / 2 + (text_metrics['yMax'] + text_metrics['yMin']) * text_scale / 2
+    content_x = (width - content_width) / 2
+    symbol_x = -sx * symbol_scale
+    symbol_y = height / 2 - (sy + sh / 2) * symbol_scale
+    return (f'<g class="node-deployment" data-deployment="{safe_text(node["deployment"])}" '
+            f'data-position="bottom" transform="translate({x:.1f} {y:.1f})" '
+            f'aria-label="{safe_text(tag["label"])} · {safe_text(tag["description"])}">'
+            f'<title>{safe_text(tag["label"])} · {safe_text(tag["description"])}</title>'
+            f'<rect class="deployment-shape" width="{width}" height="{height}" rx="{height / 2}"/>'
+            f'<g class="deployment-content" transform="translate({content_x:.5f} 0)">'
+            f'<path class="deployment-symbol" transform="translate({symbol_x:.5f} {symbol_y:.5f}) scale({symbol_scale})" d="{tag["path"]}"/>'
+            f'<text class="deployment-text" x="{text_x:.5f}" y="{text_y:.5f}" font-size="{font_size}">{safe_text(tag["label"])}</text></g></g>')
+
+
+def sst_status_markup(node: dict[str, Any]) -> str:
+    """Keep status outside the symbol without replacing its category color."""
+    status = node.get("status", "normal")
+    if status == "normal":
+        return ""
+    shapes = {
+        "warning": ('M0-10 10 0 0 10-10 0Z', 'M0-4v5m0 4v.1'),
+        "alert": ('M-5-9H5L10-4V4L5 9H-5L-10 4V-4Z', 'M0-4v5m0 4v.1'),
+        "failure": ('M-5-9H5L10-4V4L5 9H-5L-10 4V-4Z', 'm-3-3 6 6m0-6-6 6'),
+        "standby": ('M0-10A10 10 0 1 1 0 10A10 10 0 1 1 0-10Z', 'M-3-4v8m6-8v8'),
+        "highlight": ('M0-10A10 10 0 1 1 0 10A10 10 0 1 1 0-10Z', 'm-4 0 3 3 5-6'),
+    }
+    shape, mark = shapes[status]
+    # Keep status in a separate upper-right sector when a pill is present.
+    distance = node_radius(node) + 7
+    angle = 22.5 if node.get("deployment") in SST_DEPLOYMENTS else 67.5
+    badge_x = distance * math.cos(math.radians(angle))
+    badge_y = -distance * math.sin(math.radians(angle))
+    scale = 0.85 if node.get("compact") else 1
+    return (f'<g class="node-state" transform="translate({badge_x:.2f} {badge_y:.2f}) scale({scale})" aria-label="{safe_text(status)}">'
+            f'<title>{safe_text(status)}</title><path class="state-shape" d="{shape}"/>'
+            f'<path class="state-mark" d="{mark}"/></g>')
+
+
+def label_markup(node: dict[str, Any], outside: bool = False) -> str:
     label = str(node["label"])
     radius = node_radius(node)
     max_chars = 8 if node.get("compact") else 11
     base_font_size = 9.5 if node.get("compact") else 11
     baseline = radius - (12 if node.get("compact") else 14)
+    if outside:
+        baseline = radius + 18
     words = re.split(r"\s+", label.strip())
     lines = [label]
     if len(label) > max_chars and len(words) > 1:
@@ -628,6 +760,13 @@ def label_markup(node: dict[str, Any]) -> str:
         font_size = max(7.0, base_font_size * min(1.0, max_chars / max(1, len(value))))
         return f'<text x="0" y="{y:.1f}" text-anchor="middle" font-size="{font_size:.1f}">{safe_text(value)}</text>'
 
+    if outside:
+        # Clear connectors behind the external name without changing routing.
+        text_width = max(sum(1 if ord(char) > 127 else 0.65 for char in line) * base_font_size for line in lines)
+        mask_width = max(28, text_width + 12)
+        return (f'<g class="node-label"><rect class="node-label-mask" x="{-mask_width / 2:.1f}" '
+                f'y="{baseline - base_font_size - 3:.1f}" width="{mask_width:.1f}" height="{base_font_size + 8 + (len(lines) - 1) * 13:.1f}" rx="3"/>'
+                + ''.join(text_line(line, baseline + index * 13) for index, line in enumerate(lines)) + '</g>')
     if len(lines) == 1:
         return text_line(lines[0], baseline)
     return text_line(lines[0], baseline - 11) + text_line(lines[1], baseline)
@@ -637,6 +776,7 @@ def render_svg(model: dict[str, Any]) -> str:
     width = model["canvas"]["width"]
     height = model["canvas"]["height"]
     nodes = {node["id"]: node for node in model["nodes"]}
+    icon_set = model["canvas"].get("icon_set", "neutral")
     group_markup: list[str] = []
     for box in group_boxes(model):
         label_width = max(92.0, min(box["w"] - 32.0, len(str(box["label"])) * 11.0 + 34.0))
@@ -687,11 +827,25 @@ def render_svg(model: dict[str, Any]) -> str:
         icon_size = 26 if node["compact"] else 36
         icon_y = -27 if node["compact"] else -34
         compact = " compact" if node["compact"] else ""
+        is_sst = icon_set == "sst" and node["type"] in SST_ICON_CATEGORIES
+        family_class = (" sst in-group" if node.get("group") else " sst") if is_sst else ""
+        category_attr = f' data-icon-category="{SST_ICON_CATEGORIES[node["type"]]}"' if is_sst else ""
+        icon_prefix = "sst-icon" if is_sst else "icon"
+        if node["type"] == "virtual-switch" and not is_sst:
+            icon_type = "switch"
+        else:
+            icon_type = node["type"]
+        disc_class = ' class="node-disc"' if is_sst else ""
+        node_title = (f'<title>{safe_text(node["label"])} · {safe_text(node["type"])} · {safe_text(node["status"])}</title>' if is_sst else "")
+        status_markup = sst_status_markup(node) if is_sst else ""
+        deployment_markup = sst_deployment_markup(node) if is_sst else ""
+        glyph_markup = (sst_icon_markup(node) if is_sst else
+                        f'<svg x="{-icon_size / 2:.1f}" y="{icon_y:.1f}" width="{icon_size}" height="{icon_size}" viewBox="0 0 64 64"><use href="#{icon_prefix}-{icon_type}"/></svg>')
         node_hit_markup.append(f'<circle class="node-hit" data-node-id="{safe_text(node["id"])}" cx="{x:.1f}" cy="{y:.1f}" r="{hit_radius:.1f}" fill="transparent" stroke="none" pointer-events="all"/>')
         node_markup.append(
-            f'<g class="node {node["status"]}{compact}" id="{safe_id(node["id"], "node")}" data-node-id="{safe_text(node["id"])}" transform="translate({x:.1f} {y:.1f})">'
-            f'<circle r="{radius:.1f}"/><svg x="{-icon_size / 2:.1f}" y="{icon_y:.1f}" width="{icon_size}" height="{icon_size}" viewBox="0 0 64 64"><use href="#icon-{node["type"]}"/></svg>'
-            f'{label_markup(node)}</g>'
+            f'<g class="node {node["status"]}{compact}{family_class}" id="{safe_id(node["id"], "node")}" data-node-id="{safe_text(node["id"])}"{category_attr} transform="translate({x:.1f} {y:.1f})">'
+            f'{node_title}<circle{disc_class} r="{radius:.1f}"/>{glyph_markup}'
+            f'{label_markup(node, outside=is_sst)}{deployment_markup}{status_markup}</g>'
         )
     title_id = safe_id(model["title"], "topology-title")
     desc_id = safe_id(model["title"], "topology-desc")
@@ -699,7 +853,7 @@ def render_svg(model: dict[str, Any]) -> str:
     return f'''<svg id="topology-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.1f} {height:.1f}" role="img" aria-labelledby="{title_id} {desc_id}">
   <title id="{title_id}">{safe_text(model["title"])}</title>
   <desc id="{desc_id}">{safe_text(description)}</desc>
-  <defs>{icon_defs()}<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>
+  <defs>{icon_defs(icon_set)}<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>
   <g id="viewport"><rect class="canvas-background" width="{width:.1f}" height="{height:.1f}"/>{groups}<g class="edges">{''.join(edge_markup)}</g><g class="wireless-signals">{''.join(wireless_signals)}</g><g class="node-hits">{''.join(node_hit_markup)}</g><g class="edge-labels">{''.join(labels)}</g><g class="nodes">{''.join(node_markup)}</g></g>
 </svg>'''
 
@@ -1270,6 +1424,23 @@ button.export { width:42px; font-size:11px; font-weight:700; } button:hover { ba
     for original, replacement in export_style_updates:
         output = output.replace(original, replacement)
     output = output.replace('</body>', editor_script() + '</body>', 1)
+    if model["canvas"].get("icon_set") == "sst":
+        css = sst_styles()
+        output = output.replace('</style>', css + '</style>', 1)
+        output = output.replace('class="app" data-theme=', 'class="app" data-icon-set="sst" data-theme=', 1)
+        # SVG/PNG exports must carry the same two-tone rules and the active
+        # theme's resolved variables; a standalone SVG has no .app ancestor.
+        variables = sorted(set(re.findall(r"(--sst-[a-z-]+)\s*:", css)) | {"--canvas", "--group"})
+        export_sst = (
+            f'{json.dumps(variables)}.forEach(name=>{{const value=color(name);if(value)copy.style.setProperty(name,value)}});'
+            "style.textContent=style.textContent.replace('font:700 11px Bahnschrift,Arial','font-family:Bahnschrift,Arial;font-weight:700');"
+            f'style.textContent+={json.dumps(css)};'
+            "copy.querySelectorAll('.node-hit,.edge-hit,#editor-overlay').forEach(element=>element.remove());"
+            "copy.querySelectorAll('.editor-selected').forEach(element=>element.classList.remove('editor-selected'));"
+        )
+        output = output.replace('copy.insertBefore(style,copy.firstChild);', export_sst + 'copy.insertBefore(style,copy.firstChild);', 1)
+        output = output.replace('const updateModelScript = () => { modelElement.textContent',
+                                'const updateModelScript = () => { model.canvas.theme = app.dataset.theme; modelElement.textContent', 1)
     return output
 
 

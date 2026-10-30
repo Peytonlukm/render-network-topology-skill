@@ -1,74 +1,22 @@
 # Diagram Design Alignment
 
-`render-network-topology` borrows the most useful editorial disciplines from
-the `diagram-design` skill while keeping network topology semantics primary.
-This reference is read together with `topology-taste-audit.md` before a new
-diagram is rendered.
+The project's [v1.0 topology standard](topology-design-standard.md) has priority. Borrow diagram-design's clarity, spacing, and consistent connections while preserving actual network semantics.
 
-## What is adopted
-
-- **One reading order.** Arrange ingress, security, core, services,
-  data/storage, and endpoints on a consistent left-to-right or top-to-bottom
-  axis. Use deliberate hierarchy instead of automatic-looking symmetry.
-- **Delete before decorating.** Keep every node and edge only when it carries
-  a network fact. Collapse repeated leaf endpoints when the requested detail
-  level permits it, and split very dense topologies into an overview plus
-  zone-level detail diagrams.
-- **Focal signal.** Reserve the blue highlight treatment for one or two focal
-  devices or paths. Operational statuses still use amber, red, and standby
-  gray when they convey a real warning, failure, or redundancy state.
-- **Editorial spacing.** Use a fixed grid, protected outer margins, generous
-  zone padding, and a stable node/icon/label baseline. Expand a region before
-  shrinking labels or icons.
-- **Quiet surfaces.** Use a clean paper-like canvas, hairline boundaries,
-  small-radius zones, one thin-line icon family, and no gradients, shadows,
-  decorative grids, or animated paths.
-- **Semantic typography.** Device names use the sans technical display stack;
-  zone and link annotations use a compact mono stack. Mono is reserved for
-  protocols, labels, and other technical metadata rather than all text.
-- **Accessible SVG.** Every output contains a non-empty `<title>` and `<desc>`
-  referenced by `aria-labelledby`, so the visual has a useful text fallback.
-
-## Network-specific adaptations
-
-- The three-zone limit from general architecture diagrams is not enforced.
-  Network diagrams may use four to six trust or operational zones when each
-  zone has a distinct boundary and the spacing remains breathable.
-- Status colors are semantic, not editorial decoration. A topology can have
-  several warnings or standby links when that is true of the infrastructure;
-  the one-to-two focal rule applies to optional `highlight` emphasis.
-- A faithful topology may exceed the general architecture node budget when
-  the user explicitly asks for every device. Above 24 nodes, prefer an
-  overview/detail pair, or record the deliberate exception in the brief.
-- Wireless links remain a dotted arc with a radio marker. They do not inherit
-  the rounded orthogonal route grammar used by wired links.
+- Establish a main reading path; allow each real scope to use an appropriate local direction and composition.
+- Remove decorative frames and redundant objects. Keep every displayed node, edge, boundary and note attributable to a fact or explicitly marked concept.
+- Preserve meaningful status and category colors, with neutral base connections. Business emphasis is directional and shares an existing base path.
+- Keep typography roles consistent with the embedded IBM Plex Sans and Chinese fallback. Use the reviewed type scale and at least 13px for device names.
+- Use flat surfaces and quiet explanatory frames. Labels occupy real whitespace and cannot mask away an actual collision.
+- Device names stay outside circles; lower-side relocation is for actual six o'clock routing conflicts, not arbitrary decoration.
 
 ## Connector preflight
 
-Before delivery, verify the following for every wired route:
+1. Each endpoint attaches to the intended device circumference or a clearly identified overview region boundary.
+2. Port order follows target order and the local hierarchy axis. Multiple wires keep distinct visible attachment points.
+3. Default rounded orthogonal routes have at most two turns and use 12/8px radius limits. Preserve a specifically selected line or curve. Necessary diagonal paths are allowed.
+4. Physical solid, logical dashed, and management dotted paths retain their meaning. Main/standby states have labels and independent path identities, not an assumed dash convention.
+5. Ring arcs share a continuous skeleton with circumference clipping and near-equal arc-length members. Give non-ring branches separate inward/outward sectors and preserve ring continuity at crossings.
+6. Minimize crossings after satisfying hard constraints; optimize symmetry afterward. A risky crossing uses a consistent short non-connection gap on the non-ring route, without creating a third bend.
+7. Use explicit junctions only for true shared connection points. Independent physical fanout remains independent edges.
 
-1. Horizontal or vertical links stay straight; off-axis routes use rounded
-   right-angle bends with no diagonal shortcuts.
-2. A link label sits on an opaque mask with visible breathing room from the
-   stroke, and labels do not overlap nodes or other labels.
-3. Parallel primary, redundant, and heartbeat paths occupy separate lanes;
-   crossings do not carry HA meaning by themselves.
-4. Multiple links entering one node fan out to distinct anchor sockets when
-   practical. Use the eight 45-degree editable sockets for manual refinement.
-5. A crossing that cannot be removed is bridged on the less important route;
-   never stack two strokes on the same path.
-
-## Four brief dials
-
-Record these in the confirmed Topology Brief when they materially affect the
-result:
-
-| Dial | Values | Default |
-| --- | --- | --- |
-| Visual profile | `enterprise-orderly`, `enterprise-orderly-plus`, `editorial-quiet`, `compact-ops` | `enterprise-orderly-plus` |
-| Detail | `faithful`, `balanced`, `simplified` | `faithful` for topology |
-| Audience | `engineer`, `mixed`, `executive` | `mixed` |
-| Destination | `viewer`, `doc-wide`, `slide-16x9`, `print` | `viewer` |
-
-These dials guide extraction and layout; they never override explicit device,
-connectivity, or theme requirements.
+Retain detail/audience/destination choices and the confirmed facts. No generic node-budget rule overrides the actual graph; compare compact and split views when density requires a decision.

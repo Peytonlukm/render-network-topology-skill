@@ -1,6 +1,24 @@
-# Topology Model
+# Topology Model · Legacy Compatibility
+
+This file describes the existing Python model and its actual compatibility behavior. New design decisions use [the approved v1.0 standard](topology-design-standard.md); V2 output uses [the separate V2 model](topology-v2-design.md). Legacy defaults such as left-to-right layout, internal neutral labels, inferred standby dashes, or straight-to-orthogonal fallback are not v1.0 design requirements.
+
+## Icon family extension
+
+SST uses a 2.4px normal circular border and external device names. Untagged icons keep centered visible ink at diameter / phi (about 61.8%). In v4, deployment pills sit inside the lower half; tagged glyphs move to y=-14 with maximum 41.5px standard / 26px compact visible ink. Symbols retain their 64×64 space; `data-ink-bounds` includes outer strokes.
+
+`canvas.icon_set` optionally accepts `"neutral"` (default) or `"sst"`. SST uses shared 64×64 geometry, theme variables, local category accents, and outer status markers; its pilot supports the 12 roles listed in `icon-catalog.md`. Unavailable SST symbols fall back to neutral icons without changing model device types. The new `virtual-switch` role uses rank 2. Theme and icon family are retained in saved HTML/JSON.
 
 Use JSON with `title`, `canvas`, `groups`, `nodes`, and `edges`. The renderer accepts unknown optional fields and keeps them in the embedded model.
+
+### SST deployment tags
+
+Optional `nodes[].deployment` accepts `ha`, `stack`, `cluster`, or `mlag` (case-insensitive input). These draw HA, Stack, Cluster, and MLAG pills inside the lower half, independently of `status`. Pill height is 28px standard / 26px compact, compared with 20px/17px status marks. The pill bottom is inset 5px from the circle's lowest point. Symbol and IBM Plex Sans text are centered as a single group using visible ink metrics; pill widths fit that group with equal padding. Setting no deployment field draws no pill.
+
+`nodes[].deployment_position` accepts `bottom`; former v3 `top`, `top-left`, and `top-right` values normalize to `bottom` to keep existing pilot models usable with the revised design. This field never creates peers, heartbeat links, or physical connectivity. Deployment fields and embedded open fonts are preserved by HTML/JSON workflows and SVG/PNG export. The SST pilot draws these on the 12 supported symbols. The original WOFF2 files and their OFL 1.1 license are in `assets/fonts`; no system font installation is required.
+
+```json
+{"id":"fw-pair","label":"Boundary FW","type":"firewall","deployment":"ha","status":"warning"}
+```
 
 ## Core Fields
 
