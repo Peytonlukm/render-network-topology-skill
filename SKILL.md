@@ -55,4 +55,4 @@ Python 3.10+ and its standard library suffice. `canvas.icon_set` is `detailed` (
 - `assets/topology-icons.svg`, `icon-system.json`, `tag-metrics.json`: 12 detailed roles, four deployment tags, measured ink/tag metrics; other roles use bundled outline symbols.
 - `scripts/v2/`: render, edit and snapping logic; `tools/`: portable sample builder and verification commands.
 - Fonts: unmodified IBM Plex Sans with its SIL OFL 1.1 notice in `assets/fonts/`.
-- Skill distribution follows [LICENSE](LICENSE), including the prohibition on paid distribution of modified skill software. Preserve third-party notices. The license permits commercial topology deliverables; do not add visible attribution to a user's drawing unless required by its other assets.
+- Skill distribution follows [LICENSE](LICENSE), including the prohibition on paid distribution of original or modified skill software. Preserve third-party notices. The license permits commercial topology deliverables; do not add visible attribution to a user's drawing unless required by its other assets.

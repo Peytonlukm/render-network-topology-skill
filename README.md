@@ -48,6 +48,6 @@ python scripts/render_topology.py examples/network-topology.json --output output
 
 ## 许可
 
-保留现有[技能许可](LICENSE)：允许使用、修改、免费分享、商业拓扑成品交付与收费在线服务；禁止未经授权对修改版技能软件收费分发。具体范围以许可全文为准。IBM Plex Sans 单独遵循 [SIL OFL 1.1](assets/fonts/IBMPlexSans-LICENSE.txt)。
+[技能许可](LICENSE)允许使用、修改和免费分享原版及修改版，也允许商业拓扑成品交付与收费在线服务；未经授权，不得有偿分发或转售原版或修改版技能。此前旧许可授予的有效权利不因许可更新而自动撤销。具体范围以许可全文为准。IBM Plex Sans 单独遵循 [SIL OFL 1.1](assets/fonts/IBMPlexSans-LICENSE.txt)。
 
-本地版本 2.1.0 为通用化和配色修订版；变更见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本 2.1.1 更新了技能许可；功能与变更记录见 [CHANGELOG.md](CHANGELOG.md)。

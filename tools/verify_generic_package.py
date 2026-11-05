@@ -32,7 +32,7 @@ font=json.loads((skill/'assets/fonts/sources.json').read_text(encoding='utf-8'))
 require(all(hashlib.sha256((skill/'assets/fonts'/f['file']).read_bytes()).hexdigest()==f['sha256'] for f in font['files']),'Original font bytes and OFL notice preserved')
 require((skill/'assets/fonts/IBMPlexSans-LICENSE.txt').is_file(),'Bundled font license')
 license_text=(skill/'LICENSE').read_text(encoding='utf-8')
-require('不得向第三方有偿分发修改版技能' in license_text and '拓扑成品' in license_text,'Existing distribution restriction and output rights retained')
+require('不得向第三方有偿分发原版或修改版技能' in license_text and '免费分享原版或修改版' in license_text and '拓扑成品' in license_text and '收费的在线托管服务' in license_text,'Original and modified skill resale restricted; sharing and output rights retained')
 # Import the actual legacy renderer: exercise canonical and older family names, all themes and palettes.
 spec=importlib.util.spec_from_file_location('topology_legacy',skill/'scripts/render_topology.py');legacy=importlib.util.module_from_spec(spec);spec.loader.exec_module(legacy)
 base={'title':'Portable check','canvas':{},'nodes':[{'id':'a','type':'router','label':'A'},{'id':'b','type':'server','label':'B'}],'edges':[],'groups':[]}
