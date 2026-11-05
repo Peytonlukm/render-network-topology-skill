@@ -4,9 +4,10 @@ import json
 import subprocess
 import verify_topology_v2_browser as b
 
+b.SESSION='topo-v2-label-align-1030'
 OUT=b.OUT
 FILES=OUT/'verification/icon-alignment'
-FILES.mkdir(parents=True, exist_ok=True)
+FILES.mkdir(exist_ok=True)
 js,command,require=b.js,b.command,b.require
 checks=[]
 cases=[]
@@ -82,12 +83,8 @@ def main():
     record('Saved standalone HTML preserves lower-row aligned circles and their labels',not js('sampleBook.editor.enabled') and node()==expected)
     command('click','#edit');command('select','#editor-selection','node|access-5');start=begin();move(start,8,-3/start['sy']);require(abs(node()['y']-760)<1e-8,'Reopened alignment failed');end()
     record('The saved HTML can continue accurate icon alignment')
-    report={'passed':True,'html_sha256':hashlib.sha256((OUT/'index.html').read_bytes()).hexdigest(),'checks':checks,'cases':cases,'different_labels':label_case,'exports':exports,'export_validation':'Actual button-produced bytes and standalone reopen; OS save dialog not claimed.'}
+    report={'passed':True,'html_sha256':hashlib.sha256((OUT/'index.html').read_bytes()).hexdigest(),'checks':checks,'cases':cases,'different_labels':label_case,'exports':exports,'baseline':'../bottom-icon-reproduction.json','export_validation':'Actual button-produced bytes and standalone reopen; OS save dialog not claimed.'}
     (OUT/'verification/icon-alignment-browser-checks.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-    print(json.dumps({'passed':True,'checks':len(checks),'cases':len(cases)}))
+    command('close');print(json.dumps({'passed':True,'checks':len(checks),'cases':len(cases)}))
 
-if __name__=='__main__':
-    try:
-        main()
-    finally:
-        subprocess.run([str(b.BROWSER), '--session', b.SESSION, 'close'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20, check=False)
+if __name__=='__main__':main()

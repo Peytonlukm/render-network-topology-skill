@@ -1,7 +1,8 @@
 'use strict';
+const SKILL=require('node:fs').existsSync(require('node:path').join(__dirname,'../SKILL.md'))?require('node:path').join(__dirname,'..'):require('node:path').join(__dirname,'../render-network-topology');
 // Exact-ellipse geometry, seam continuity, direction, and semantic closure.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const Scene=require('../scripts/v2/scene.js');
+const Scene=require(require('node:path').join(SKILL,'scripts/v2/scene.js'));
 const out=path.join(__dirname,'../outputs/Topology_V2_Design/verification');
 const near=(a,b,message,epsilon=1e-8)=>assert.ok(Math.abs(a-b)<epsilon,`${message}: ${a} != ${b}`);
 const same=(a,b,message)=>{near(a.x,b.x,message+' x');near(a.y,b.y,message+' y')};

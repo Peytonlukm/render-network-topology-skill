@@ -6,9 +6,10 @@ import subprocess
 import xml.etree.ElementTree as ET
 import verify_topology_v2_browser as b
 
+b.SESSION='topo-v2-snap-1030'
 OUT=b.OUT
 CHECKS=OUT/'verification/snapping'
-CHECKS.mkdir(parents=True, exist_ok=True)
+CHECKS.mkdir(exist_ok=True)
 js,command,require=b.js,b.command,b.require
 checks=[]
 
@@ -153,10 +154,7 @@ def main():
     command('set','offline','off')
     report={'passed':True,'html_sha256':hashlib.sha256((OUT/'index.html').read_bytes()).hexdigest(),'checks':checks,'screen_distance_checks':scale_checks,'desktop':desktop,'mobile':mobile,'exports':exports,'export_validation':'Actual button-produced Blob bytes; native system saving not claimed.'}
     (OUT/'verification/snapping-browser-checks.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    command('close')
     print(json.dumps({'passed':True,'checks':len(checks),'exports':len(exports)}))
 
-if __name__=='__main__':
-    try:
-        main()
-    finally:
-        subprocess.run([str(b.BROWSER), '--session', b.SESSION, 'close'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20, check=False)
+if __name__=='__main__':main()

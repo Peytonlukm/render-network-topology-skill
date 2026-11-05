@@ -1,6 +1,7 @@
 'use strict';
+const SKILL=require('node:fs').existsSync(require('node:path').join(__dirname,'../SKILL.md'))?require('node:path').join(__dirname,'..'):require('node:path').join(__dirname,'../render-network-topology');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const root=path.join(__dirname,'..'),Edit=require('../scripts/v2/editor-model.js'),Scene=require('../scripts/v2/scene.js');
+const root=path.join(__dirname,'..'),Edit=require(require('node:path').join(SKILL,'scripts/v2/editor-model.js')),Scene=require(require('node:path').join(SKILL,'scripts/v2/scene.js'));
 const scenes=require('./topology_v2_scenes.js'),by=id=>scenes.find(s=>s.id===id),checks=[];
 function test(name,fn){try{fn();checks.push(name);}catch(error){console.error(name+': '+error.message.slice(0,1800));process.exit(1);}}
 function model(s,view='overview'){return Scene.resolve(s,view);}

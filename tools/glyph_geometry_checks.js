@@ -1,4 +1,4 @@
-async function measureSstDeployment(selector) {
+async function measureIconDeployment(selector) {
   await document.fonts.load('600 12.5px "IBM Plex Sans"');
   await document.fonts.load('400 12px "IBM Plex Sans"');
   await document.fonts.ready;
@@ -21,7 +21,7 @@ async function measureSstDeployment(selector) {
     const contentTop = Math.min(textA.y, symbolA.y), contentBottom = Math.max(textB.y, symbolB.y);
     const state = n.querySelector('.state-shape')?.getBoundingClientRect();
     const use = n.querySelector('.node-glyph use'), ub = use.getBBox(), um = use.getScreenCTM();
-    const pad = use.getAttribute('href') === '#sst-icon-rack' ? 1.75 : 0;
+    const pad = use.getAttribute('href') === '#glyph-icon-rack' ? 1.75 : 0;
     const glyphBottom = transform(ub.x, ub.y + ub.height + pad, um).y;
     const box = {x:pill.x-4, y:pill.y-4, right:pill.right+4, bottom:pill.bottom+4};
     let crossings = 0;

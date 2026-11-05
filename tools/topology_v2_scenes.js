@@ -1,6 +1,7 @@
 'use strict';
+const SKILL=require('node:fs').existsSync(require('node:path').join(__dirname,'../SKILL.md'))?require('node:path').join(__dirname,'..'):require('node:path').join(__dirname,'../render-network-topology');
 // Curated review scenes use the approved standard; coordinates are not an auto-layout result.
-const Scene=require('../scripts/v2/scene.js');
+const Scene=require(require('node:path').join(SKILL,'scripts/v2/scene.js'));
 const N=(id,label,type,x,y,group,extra={})=>({id,label,type,x,y,group,status:'normal',...extra});
 const G=(id,label,x,y,w,h,extra={})=>({id,label,x,y,w,h,semantics:'network',...extra});
 const E=(id,source,target,extra={})=>({id,source,target,semantics:'physical',certainty:'actual',status:'normal',geometry:'orthogonal',direction:false,color:'line',...extra});
@@ -133,4 +134,4 @@ function fan(source,targets,prefix,lane=600,extra={}) {
 }
 
 const generatedAt=new Date().toISOString();
-module.exports=scenes.map(scene=>({schema_version:2,standards_version:'1.0',icon_revision:'sst-v4',stage:'visual-specimen',coordinates:'curated',generated_at:generatedAt,design_tokens:{...Scene.TOKENS},overrides:[],exceptions:[],width:1600,height:1000,...scene}));
+module.exports=scenes.map(scene=>({schema_version:2,standards_version:'1.0',icon_revision:'vector-v1',stage:'visual-specimen',coordinates:'curated',generated_at:generatedAt,design_tokens:{...Scene.TOKENS},overrides:[],exceptions:[],width:1600,height:1000,...scene}));

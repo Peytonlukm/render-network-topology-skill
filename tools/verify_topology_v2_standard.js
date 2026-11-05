@@ -1,8 +1,9 @@
 'use strict';
+const SKILL=require('node:fs').existsSync(require('node:path').join(__dirname,'../SKILL.md'))?require('node:path').join(__dirname,'..'):require('node:path').join(__dirname,'../render-network-topology');
 // Observable standard invariants for the generated fixed-coordinate specimens.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
-const Scene=require('../scripts/v2/scene.js');
-const root=path.join(__dirname,'..'),out=path.join(root,'outputs/Topology_V2_Design'),skill=root;
+const Scene=require(require('node:path').join(SKILL,'scripts/v2/scene.js'));
+const root=path.join(__dirname,'..'),out=path.join(root,'outputs/Topology_V2_Design'),skill=SKILL;
 const manifest=JSON.parse(fs.readFileSync(path.join(out,'manifest.json'),'utf8'));
 const models=fs.readdirSync(path.join(out,'models')).filter(n=>n.endsWith('.json')).map(n=>JSON.parse(fs.readFileSync(path.join(out,'models',n),'utf8')));
 const failures=[],checks=[],fanoutCounts=new Set();
@@ -30,7 +31,7 @@ function intersection(a,b,c,d){
 for(const model of models)for(const view of model.views?.engineering?['overview','engineering']:['overview']){
   const m=Scene.resolve(model,view),name=model.id+'/'+view,allEdges=[...model.edges,...Object.values(model.views||{}).flatMap(v=>v.edges||[]),...(model.member_edges||[])],knownEdges=new Map(allEdges.map(e=>[e.id,e]));
   const objects=new Map([...m.groups,...m.nodes,...m.junctions.map(n=>({...n,kind:'junction'})),...m.rings].map(n=>[n.id,n]));
-  check(m.standards_version==='1.0'&&m.icon_revision==='sst-v4'&&m.coordinates==='curated',name+': missing version or curated boundary');
+  check(m.standards_version==='1.0'&&m.icon_revision==='vector-v1'&&m.coordinates==='curated',name+': missing version or curated boundary');
   check(JSON.stringify(m.design_tokens)===JSON.stringify(Scene.TOKENS),name+': undocumented token change');
   const fans=new Map(),routes=[];let bends=0,maxEndpointError=0;
   for(const g of m.groups)check(g.kind==='layer'||g.kind==='collection'||g.kind==='specimen'||['site','network','administrative','security','compute','capability'].includes(g.semantics),name+': decorative boundary '+g.id);
@@ -88,7 +89,7 @@ for(const [theme,p] of Object.entries(Scene.PALETTES)){
 }
 const sources=JSON.parse(fs.readFileSync(path.join(skill,'assets/fonts/sources.json'),'utf8'));
 for(const entry of sources.files){const bytes=fs.readFileSync(path.join(skill,'assets/fonts',entry.file));check(crypto.createHash('sha256').update(bytes).digest('hex')===entry.sha256,'font integrity '+entry.file);}
-const standard=fs.readFileSync(path.join(root,'references/topology-design-standard.md'));
+const standard=fs.readFileSync(path.join(skill,'references/topology-design-standard.md'));
 for(const file of [path.join(skill,'references/topology-design-standard.md'),path.join(out,'正式设计规范_v1.0.md')])check(fs.readFileSync(file).equals(standard),'standard copy out of sync '+file);
 const report={standards_version:'1.0',specimens:models.length,variants:manifest.variants.length,views:checks,fanout_counts:[...fanoutCounts].sort(),contrast_checks:contrasts,fonts_original_hashes:true,standard_copies:true,failures,passed:failures.length===0};
 fs.mkdirSync(path.join(out,'verification'),{recursive:true});fs.writeFileSync(path.join(out,'verification/standard-checks.json'),JSON.stringify(report,null,2)+'\n');

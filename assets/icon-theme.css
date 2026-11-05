@@ -1,0 +1,44 @@
+/* Theme and palette variables are generated from icon-palettes.json. */
+.node.glyph { --glyph-accent:var(--glyph-neutral); --glyph-label-bg:var(--canvas); }
+.node.glyph.in-group { --glyph-label-bg:var(--group); }
+.node.glyph[data-icon-category="network"] { --glyph-accent:var(--glyph-network); }
+.node.glyph[data-icon-category="compute"] { --glyph-accent:var(--glyph-compute); }
+.node.glyph[data-icon-category="security"] { --glyph-accent:var(--glyph-security); }
+.node.glyph[data-icon-category="storage"] { --glyph-accent:var(--glyph-storage); }
+.node.glyph[data-icon-category="cloud"] { --glyph-accent:var(--glyph-cloud); }
+.node.glyph[data-icon-category="facilities"] { --glyph-accent:var(--glyph-facilities); }
+.node.glyph[data-icon-category="endpoint"] { --glyph-accent:var(--glyph-endpoint); }
+.node.glyph > .node-disc { fill:var(--glyph-disc); stroke:var(--glyph-border); stroke-width:2.4; }
+.node.glyph > svg { fill:none; stroke:none; stroke-linecap:round; stroke-linejoin:round; }
+.node.glyph .node-label text { fill:var(--glyph-text); font-family:"IBM Plex Sans","Source Han Sans SC",sans-serif; font-weight:600; letter-spacing:0; }
+.node.glyph .node-label-mask { fill:var(--glyph-label-bg); stroke:none; }
+.glyph-solid { fill:var(--glyph-ink); stroke:none; }
+.glyph-muted { fill:var(--glyph-muted); stroke:none; }
+.glyph-accent { fill:var(--glyph-accent); stroke:none; }
+.glyph-cutout { fill:var(--glyph-cut); stroke:none; }
+.glyph-line, .glyph-cut-line, .glyph-accent-line { fill:none; stroke-width:3.5; stroke-linecap:round; stroke-linejoin:round; }
+.glyph-line { stroke:var(--glyph-ink); }
+.glyph-cut-line { stroke:var(--glyph-cut); }
+.glyph-accent-line { stroke:var(--glyph-accent); }
+.node.glyph.highlight > .node-disc { stroke:var(--glyph-focus); stroke-width:3; }
+.node.glyph.warning > .node-disc { stroke:var(--glyph-warning); stroke-width:3; }
+.node.glyph.alert > .node-disc, .node.glyph.failure > .node-disc { stroke:var(--glyph-failure); stroke-width:3; }
+.node.glyph.standby > .node-disc { stroke:var(--glyph-standby); stroke-width:2.4; stroke-dasharray:4 3; }
+.node.glyph.editor-selected > .node-disc { stroke:var(--glyph-focus); stroke-width:3.4; }
+.node.glyph .node-state { pointer-events:none; --state-color:var(--glyph-focus); }
+.node.glyph.warning .node-state { --state-color:var(--glyph-warning); }
+.node.glyph.alert .node-state, .node.glyph.failure .node-state { --state-color:var(--glyph-failure); }
+.node.glyph.standby .node-state { --state-color:var(--glyph-standby); }
+.node.glyph .state-shape { fill:var(--state-color); stroke:var(--glyph-disc); stroke-width:2; stroke-linejoin:round; }
+.node.glyph .state-mark { fill:none; stroke:var(--glyph-badge-ink); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.node.glyph .node-deployment { pointer-events:none; }
+.node.glyph .deployment-shape { fill:var(--glyph-deployment-bg); stroke:var(--glyph-deployment-line); stroke-width:1.2; }
+.node.glyph .deployment-symbol { fill:none; stroke:var(--glyph-deployment-ink); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.node.glyph .node-deployment .deployment-text { fill:var(--glyph-deployment-ink); font-family:"IBM Plex Sans",sans-serif; font-weight:600; letter-spacing:0; text-anchor:start; font-kerning:none; font-variant-ligatures:none; }
+.app[data-icon-set="detailed"], .app[data-icon-set="detailed"] .title,
+.group text, .edge-label text { font-family:"IBM Plex Sans","Source Han Sans SC",sans-serif; }
+
+.node:not(.glyph) > svg{stroke:var(--glyph-ink)}
+.palette-picker{display:flex;align-items:center;gap:6px;font-size:11px;white-space:nowrap}
+.palette-picker select{min-height:34px;max-width:130px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--ink);padding:4px 8px;font:inherit}
+@media(max-width:900px){.controls{flex-wrap:wrap}.toolbar{flex-wrap:wrap}.title{flex-basis:100%}}

@@ -1,6 +1,7 @@
 'use strict';
+const SKILL=require('node:fs').existsSync(require('node:path').join(__dirname,'../SKILL.md'))?require('node:path').join(__dirname,'..'):require('node:path').join(__dirname,'../render-network-topology');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
-const Snap=require('../scripts/v2/snap.js'),Scene=require('../scripts/v2/scene.js'),Edit=require('../scripts/v2/editor-model.js');
+const Snap=require(require('node:path').join(SKILL,'scripts/v2/snap.js')),Scene=require(require('node:path').join(SKILL,'scripts/v2/scene.js')),Edit=require(require('node:path').join(SKILL,'scripts/v2/editor-model.js'));
 const scenes=require('./topology_v2_scenes.js'),checks=[];
 function test(name,fn){try{fn();checks.push(name);}catch(error){console.error(name+': '+error.stack);process.exit(1);}}
 const near=(a,b,tolerance=1e-7)=>assert.ok(Math.abs(a-b)<tolerance,`${a} != ${b}`),empty=()=>({width:1600,height:1000,nodes:[],groups:[],rings:[],junctions:[],edges:[],annotations:[]});
@@ -90,5 +91,5 @@ test('Input models and topology facts are never mutated by snapping',()=>{
   const scene=scenes.find(s=>s.id==='layered'),before=JSON.stringify(scene),m=Scene.resolve(scene,'overview'),ctx=Snap.create(m,{kind:'node',id:'dist-0'});Snap.update(ctx,{kind:'node',id:'dist-0',dx:123,dy:83},{step:1});assert.equal(JSON.stringify(scene),before);
 });
 const files=['scripts/v2/snap.js','scripts/v2/scene.js','scripts/v2/editor-model.js'];
-const report={passed:true,acquire_screen_px:Snap.ENTER,release_screen_px:Snap.LEAVE,source_sha256:Object.fromEntries(files.map(file=>[file,crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'..',file))).digest('hex')])),checks,scope:'Pure proximity, scale, hysteresis, exclusions and ring constraints; real gestures and exports verified separately.'};
+const report={passed:true,acquire_screen_px:Snap.ENTER,release_screen_px:Snap.LEAVE,source_sha256:Object.fromEntries(files.map(file=>[file,crypto.createHash('sha256').update(fs.readFileSync(path.join(SKILL,file))).digest('hex')])),checks,scope:'Pure proximity, scale, hysteresis, exclusions and ring constraints; real gestures and exports verified separately.'};
 fs.writeFileSync(path.join(__dirname,'../outputs/Topology_V2_Design/verification/snapping-model-checks.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({passed:true,checks:checks.length}));

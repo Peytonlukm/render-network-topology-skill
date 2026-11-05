@@ -98,6 +98,8 @@
         for(const g of snapFeedback.guides)overlay.append(g.type==='point'?element('circle',{cx:g.x,cy:g.y,r:4/scale,class:'edit-snap-point'}):element('line',{x1:g.x1,y1:g.y1,x2:g.x2,y2:g.y2,class:'edit-snap-guide'}));
       }
       if(!gesture){q('#route-controls').hidden=!edge;q('#route-geometry').disabled=!edge||edge.locked||edge.geometry==='ring';q('#route-reset').disabled=!edge||edge.locked||edge.geometry==='ring';
+      const node=selection?.kind==='node'?m.nodes.find(n=>n.id===selection.id):null;
+      q('#node-palette').disabled=!node||node.locked;q('#node-palette').value=node?.icon_palette||'inherit';
       if(edge)q('#route-geometry').value=edge.geometry;
       q('#editor-context').textContent=edge?.geometry==='ring'?'环段沿共同骨架；可拖动节点、环网和线旁标签。':selection?'方向键移动，Shift 精调；靠近参考位置轻吸附，Alt 暂停吸附。':'拖动设备、区域或说明；名称和线旁标签可单独定位，Alt 暂停吸附。';
       const validation=m.edit_validation;
@@ -199,6 +201,7 @@
       api.render();return findings;
     }
     q('#edit').addEventListener('click',toggle);
+    q('#node-palette').addEventListener('change',event=>{if(selection?.kind==='node')change({kind:'node-palette',id:selection.id,palette:event.target.value});});
     q('#editor-snap').addEventListener('change',()=>{if(gesture?.last)moveGesture(gesture.last);else{snapFeedback=null;refresh();}});
     q('#editor-undo').addEventListener('click',()=>undo());q('#editor-redo').addEventListener('click',()=>undo(true));
     q('#editor-check').addEventListener('click',()=>{const findings=check();api.render();api.notify(findings.length?'发现 '+findings.length+' 项布局问题，请按提示调整。':'当前布局的设备、名称与线路检查通过。');});
@@ -206,7 +209,7 @@
     q('#route-geometry').addEventListener('change',event=>{if(selection)change({kind:'geometry',id:selection.id,geometry:event.target.value});});
     q('#route-reset').addEventListener('click',()=>{if(selection)change({kind:'reset-route',id:selection.id});});
     q('#editor-reset').addEventListener('click',()=>{const before=M.clone(api.scene());selection=null;api.restoreInitial();api.render();commit(before,api.view());api.notify('已还原打开页面时的布局，可撤销。');});
-    return {afterRender,cancelGesture,check,toggle,choose,undo,loaded(){histories.delete(api.scene().id);selection=null;context='';},get enabled(){return enabled;},get selection(){return selection;},get findings(){return checkedFindings;}};
+    return {afterRender,cancelGesture,check,toggle,choose,undo,setPalette(palette){cancelGesture();change({kind:'palette',palette});},loaded(){histories.delete(api.scene().id);selection=null;context='';},get enabled(){return enabled;},get selection(){return selection;},get findings(){return checkedFindings;}};
   }
   root.TopologyEditor={create};
 })(globalThis);

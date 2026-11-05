@@ -83,7 +83,14 @@
     const d={x:p.x-n.x,y:p.y-n.y};n.x=p.x;n.y=p.y;return new Map([[n.id,d]]);
   }
   function apply(input,view,op){
-    const scene=clone(input),m=materialize(scene,view),before=clone(m),map=objects(m);
+    const scene=clone(input);
+    if(['palette','node-palette'].includes(op.kind)){
+      if(!(op.kind==='node-palette'&&op.palette==='inherit')&&!Scene.paletteIds.includes(op.palette))throw Error('请选择内置图标配色。');
+      if(op.kind==='palette')scene.icon_palette=op.palette;
+      else{const m=materialize(scene,view),n=m.nodes.find(n=>n.id===op.id);if(!n)throw Error('设备不存在。');requireUnlocked([n]);if(op.palette==='inherit')delete n.icon_palette;else n.icon_palette=op.palette;}
+      return scene;
+    }
+    const m=materialize(scene,view),before=clone(m),map=objects(m);
     let deltas=new Map();
     const n=map.get(op.id),d={x:op.dx||0,y:op.dy||0};
     if(op.kind==='node'){
@@ -154,6 +161,7 @@
       if(typeof v==='number'&&(!Number.isFinite(v)||Math.abs(v)>100000))throw Error('模型包含无效坐标或数值。');
       if(['x','y','cx','cy','rx','ry','w','h','width','height','radius','channel_spacing','angle','phase','startAngle','state_at'].includes(key)&&typeof v!=='number')throw Error('坐标与尺寸必须是数值。');
       if(typeof v==='string'&&v.length>20000)throw Error('模型文本过长。');
+      if(key==='icon_palette'&&!Scene.paletteIds.includes(v))throw Error('模型包含未知图标配色。');
       if(['labelAt','labelOffset','source_offset','target_offset','hop'].includes(key)&&(!Array.isArray(v)||v.length!==2||!v.every(Number.isFinite)))throw Error('位置偏移必须是两个数值。');
       if(['color','accent','fill'].includes(key)&&typeof v==='string'&&!/^(?:[a-zA-Z][a-zA-Z0-9-]*|#[a-fA-F0-9]{3,8})$/.test(v))throw Error('颜色必须是本地主题色名或十六进制颜色。');
       if(v&&typeof v==='object')for(const [k,value] of Object.entries(v)){

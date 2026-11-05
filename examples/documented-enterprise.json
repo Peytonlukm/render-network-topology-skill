@@ -13,7 +13,9 @@
     "routing": "lane-aware",
     "detail": "faithful",
     "audience": "mixed",
-    "destination": "viewer"
+    "destination": "viewer",
+    "icon_set": "detailed",
+    "icon_palette": "ocean"
   },
   "groups": [
     {

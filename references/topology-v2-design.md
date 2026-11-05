@@ -1,10 +1,10 @@
 # Topology V2 样板与实现说明
 
-日期：2026-10-30。依据：[正式设计规范 v1.0](topology-design-standard.md)及 SST 图标 v4。正式规范的 47 项确认记录是设计权威；本文说明当前样板的实际能力和格式。
+日期：2026-11-05。依据：[通用设计规范](topology-design-standard.md)和随包提供的通用矢量图标。本文说明实际能力与格式；用户需求优先于视觉默认值。
 
 ## 当前交付
 
-使用 `node tools/build_topology_v2_design.js` 构建 `outputs/Topology_V2_Design/index.html` 自含离线样板册；也可通过 `--output <目录>` 指定输出位置。八类构图、一个环网组合示例、一个六类连线图谱，合计 26 个深浅主题／视图变体。分层、双中心、泳道提供总览与工程详图；模型保留稳定 ID 和成员映射。
+`outputs/Topology_V2_Design/index.html` 是自含离线样板册。八类构图、一个环网组合示例、一个六类连线图谱，合计 26 个深浅主题／视图变体。分层、双中心、泳道提供总览与工程详图；模型保留稳定 ID 和成员映射。
 
 - 主体构图：分层、中心辐射、双中心、环形、网格、嵌套区域、泳道、无连线能力全景。
 - 组合示例：完整环网 + 两侧站点 + 环内真实设备，支线使用与环段分开的内外侧接点。
@@ -20,9 +20,9 @@
 
 默认圆角折线最多转弯两次；标准／紧凑圆角为 12／8px，并受短段限制；并行线中心距为 12／8px。显式直线不得带折点或偷偷退化成正交线。扇出按局部轴线分配中心与镜像接点，四个方向均可使用非 45 度端点；已有八方位输入保持兼容。带下方胶囊的双核心采用更靠近底部中轴的一对镜像接点，避开胶囊；不机械沿用固定角度。样板端点与走廊均为人工选定，不宣称完成通用端口求解。
 
-## 当前 SST 图标、组合标记和字体
+## 当前 Topology 图标、组合标记和字体
 
-共享源 `assets/sst-icon-system.json` 保存 12 类已确认 SST 图标的类别表、四种组合图形和 v4 布局参数，Node 与旧 Python 使用同一份。尚无 SST 图形的类型继续使用中性图标，80 类整库尚未完成。
+共享源 `assets/icon-system.json` 保存 12 类详细图标的类别表、四种组合图形和布局参数，Node 与旧 Python 使用同一份。其余类型使用随包提供的中性线框图标。
 
 | 项目 | 标准 | 紧凑 |
 | --- | --- | --- |
@@ -32,9 +32,9 @@
 | 圆内下方组合胶囊 | 高 28px，底边内收 5px | 高 26px，底边内收 5px |
 | 设备名 | 圆外下方，至少 13px | 圆外下方，至少 13px |
 
-`nodes[].deployment` 为 `ha`、`stack`、`cluster`、`mlag`，与 `status` 独立。胶囊符号及文字按 `sst-tag-metrics.json` 的实际字形整体居中，允许左右等量轻微超出。组合标记不自动创建成员或连接。能力图中标记为概念表达；物理设备的组合成员须由事实模型给出。正常与备用设备均保持实心外圈，备用另用暂停状态标记；重点设备可用 3px 外圈。
+`nodes[].deployment` 为 `ha`、`stack`、`cluster`、`mlag`，与 `status` 独立。胶囊符号及文字按 `tag-metrics.json` 的实际字形整体居中，允许左右等量轻微超出。组合标记不自动创建成员或连接。能力图中标记为概念表达；物理设备的组合成员须由事实模型给出。正常与备用设备均保持实心外圈，备用另用暂停状态标记；重点设备可用 3px 外圈。
 
-英文使用原版 IBM Plex Sans Regular / SemiBold，字体 WOFF2、固定源版本、哈希和 OFL 1.1 许可随 HTML／SVG 嵌入，无需安装或联网。中文沿用 Source Han Sans SC / Microsoft YaHei 后备。深浅主题读取当前 SST 主题类别色，文字及必要线路另按实际背景检查对比度。
+英文使用原版 IBM Plex Sans Regular / SemiBold，字体 WOFF2、固定源版本、哈希和 OFL 1.1 许可随 HTML／SVG 嵌入，无需安装或联网。中文沿用 Source Han Sans SC / Microsoft YaHei 后备。深浅主题读取当前 Topology 主题类别色，文字及必要线路另按实际背景检查对比度。
 
 ## 环网实现
 
@@ -46,19 +46,19 @@
 
 ## 字号与说明框
 
-继承上轮统一减小 1px 的图内字号：标题 27、区域名 17、设备名／副标题 13、说明标题 14、备注／线路／图例 11、附属信息／英文标识 10、页脚 9px。最新组合胶囊按图标 v4 的独立 12.5／11.5px 字形参数使用，不当作设备名缩放。
+图内默认字号：标题 27、区域名 17、设备名／副标题 13、说明标题 14、备注／线路／图例 11、附属信息／英文标识 10、页脚 9px。最新组合胶囊按组合图标的独立 12.5／11.5px 字形参数使用，不当作设备名缩放。
 
 副标题、区域备注、独立说明、线旁标签和页脚共用安静的主题文本框：1px 中性边、4px 圆角、内容收紧与受限宽度换行。文本框是真实障碍物，不能覆盖设备、名称或线路。线路标签置于清晰可归属线段旁，必要时引出。
 
 ## 样板模型
 
-模型记录 `schema_version: 2`、`standards_version: 1.0`、`icon_revision: sst-v4`、`stage: visual-specimen`、`coordinates: curated`、`generated_at`、实际 `design_tokens`、`overrides` 与 `exceptions`。`nodes`、`groups`、`edges`、`rings`、`junctions`、`member_edges`、`views` 和聚合映射保留可追溯数据。
+模型记录 `schema_version: 2`、`standards_version: 1.0`、`icon_revision: vector-v1`、`stage: visual-specimen`、`coordinates: curated`、`generated_at`、实际 `design_tokens`、`overrides` 与 `exceptions`。`nodes`、`groups`、`edges`、`rings`、`junctions`、`member_edges`、`views` 和聚合映射保留可追溯数据。
 
 边记录稳定 ID、`source`／`target`、`semantics`、`certainty`、`status`、方向、角色、几何与标签。区域级关系标明 `abstraction: region`，不冒充设备接口。业务边以 `base_edge` 引用现有基础边；聚合 `members` 引用完整成员记录。V2 JSON 不能直接交给旧 Python 渲染器。
 
 ## 验证与边界
 
-可运行仓库提供的环形几何、标准、编辑器、吸附和浏览器检查。检查输出位于生成目录的 `verification/`，覆盖模型引用／成员、语义线型、端点与转弯、对比度、字体与胶囊几何、标签避让、环路连续性和按钮导出内容。浏览器系统保存不作为成功项，以按钮实际 Blob 字节和独立重开验证导出内容。
+运行项目构建、环形几何、标准检查、浏览器检查和结构检查。检查目录 `verification/` 包括源文件与字体哈希、模型引用／成员、语义线型、端点与转弯、对比度、实际字体／胶囊几何、标签避让、环路连续性和真实按钮导出的静态文件。浏览器系统保存不作为成功项，以按钮实际 Blob 字节和独立重开验证导出内容。
 
 126 组环形参数覆盖 3／4／6／8／12／20／40 节点、圆和横竖椭圆、双方向与三种起始角；高节点数使用足够半径，验证等弧长、外缘端点、反向路径、基线事实闭合及并行弧形。
 
@@ -90,3 +90,11 @@
 编辑代码分为 `scripts/v2/editor-model.js` 的模型／几何操作、`scripts/v2/snap.js` 的纯近邻吸附与参照计算、`assets/v2/editor.js` 的手势、选择、历史和检查。构建时与原图元一同内嵌，不安装依赖。`verify_topology_v2_editor.js` 检查几何与模型不变量；`verify_topology_v2_editor_browser.py` 验证真实鼠标操作及保存／重开。
 
 `verify_topology_v2_snapping.js` 验证屏幕阈值、保持区间、候选排除与环约束；`verify_topology_v2_snapping_browser.py` 验证真实八向拖动、两档缩放、Alt 按下／释放、开关、区域／环对齐、深浅界面、临时指南清理及 HTML／JSON／SVG 往返。
+
+## 配色、构建与分发
+
+在技能根目录运行 `node tools/build_topology_v2_design.js --model examples/v2-minimal.json --output outputs/my-topology`。不带 `--model` 会生成全部样板。Node 只使用内置模块，构建和 HTML 查看均不需联网。
+
+根字段 `icon_palette` 是整图默认值，可选 `ocean`、`forest`、`violet`、`copper`、`graphite`、`categories`。节点的同名字段覆盖默认值；删除节点字段可恢复继承。整图设置共享到各视图；节点修改通过当前视图的节点数组保存。编辑器中使用“整体配色”和“选中配色”，可撤销／重做；颜色修改不会改变坐标、端点、状态或实际连通关系。
+
+HTML 保存包含整个工作簿；JSON 保存包含当前场景和所有视图；SVG／PNG 使用当前视图和主题的实际配色。`node.accent` 是显式自定义重点色，优先于配色中的 accent。导入旧 JSON 时缺省配色为 ocean，未识别的配色 ID 拒绝导入并说明原因。

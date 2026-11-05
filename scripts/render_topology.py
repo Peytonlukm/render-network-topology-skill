@@ -32,10 +32,11 @@ ICON_TYPES = {
     "subnet", "switch", "tape-library", "thin-client", "ups", "virtual-machine", "vpn-gateway", "vpc",
     "waf", "web-server", "wireless", "wireless-ap", "wireless-controller", "zero-trust-gateway", "virtual-switch",
 }
-SST_ICON_SYSTEM = json.loads((Path(__file__).resolve().parent.parent / 'assets/sst-icon-system.json').read_text(encoding='utf-8'))
-SST_ICON_CATEGORIES = SST_ICON_SYSTEM["categories"]
-SST_DEPLOYMENTS = SST_ICON_SYSTEM["deployments"]
-SST_DEPLOYMENT_POSITIONS = {"bottom"}
+ICON_SYSTEM = json.loads((Path(__file__).resolve().parent.parent / 'assets/icon-system.json').read_text(encoding='utf-8'))
+ICON_PALETTES = json.loads((Path(__file__).resolve().parent.parent / 'assets/icon-palettes.json').read_text(encoding='utf-8'))
+ICON_CATEGORIES = ICON_SYSTEM["categories"]
+DEPLOYMENTS = ICON_SYSTEM["deployments"]
+DEPLOYMENT_POSITIONS = {"bottom"}
 STATUS_CLASS = {"normal", "highlight", "warning", "alert", "failure", "standby"}
 EDGE_ROLES = {"", "primary", "redundant", "heartbeat", "management"}
 DETAIL_LEVELS = {"faithful", "balanced", "simplified"}
@@ -133,8 +134,10 @@ def normalize_model(model: dict[str, Any], theme_override: str | None) -> dict[s
     canvas["destination"] = str(canvas.get("destination", "viewer")).lower()
     canvas["visual_profile"] = str(canvas.get("visual_profile", "enterprise-orderly-plus")).lower()
     canvas["routing"] = str(canvas.get("routing", "lane-aware")).lower()
-    if "icon_set" in canvas:
-        canvas["icon_set"] = "sst" if str(canvas["icon_set"]).lower() == "sst" else "neutral"
+    canvas["icon_set"] = "neutral" if str(canvas.get("icon_set", "")).lower() in {"neutral", "outline"} else "detailed"
+    canvas["icon_palette"] = str(canvas.get("icon_palette", ICON_PALETTES["default"]))
+    if canvas["icon_palette"] not in ICON_PALETTES["palettes"]:
+        raise ValueError("Unknown canvas.icon_palette. Choose a bundled palette.")
     if canvas["theme"] not in {"light", "dark"}:
         canvas["theme"] = "light"
     if canvas["layout"] not in {"enterprise", "manual"}:
@@ -175,14 +178,14 @@ def normalize_model(model: dict[str, Any], theme_override: str | None) -> dict[s
             node["status"] = "normal"
         if "deployment" in node:
             deployment = str(node["deployment"]).strip().lower()
-            if deployment not in SST_DEPLOYMENTS:
+            if deployment not in DEPLOYMENTS:
                 raise ValueError(f"Unknown deployment tag: {node['deployment']}")
             node["deployment"] = deployment
         if "deployment_position" in node:
             position = str(node["deployment_position"]).strip().lower()
             if position in {"top", "top-left", "top-right"}:
                 position = "bottom"  # v3 models adopt the current centered placement.
-            if position not in SST_DEPLOYMENT_POSITIONS:
+            if position not in DEPLOYMENT_POSITIONS:
                 raise ValueError(f"Unknown deployment tag position: {node['deployment_position']}")
             node["deployment_position"] = position
         node["group"] = str(node["group"]) if node.get("group") is not None else None
@@ -628,68 +631,81 @@ def icon_defs(icon_set: str = "neutral") -> str:
     if not match:
         raise RuntimeError("device-icons.svg must contain a defs element.")
     definitions = match.group(1)
-    if icon_set == "sst":
-        payload = path.with_name("sst-device-icons.svg").read_text(encoding="utf-8")
+    if icon_set == "detailed":
+        payload = path.with_name("topology-icons.svg").read_text(encoding="utf-8")
         match = re.search(r"<defs>(.*)</defs>", payload, flags=re.DOTALL)
         if not match:
-            raise RuntimeError("sst-device-icons.svg must contain a defs element.")
+            raise RuntimeError("topology-icons.svg must contain a defs element.")
         definitions += match.group(1)
     return definitions
 
 
 @lru_cache(maxsize=1)
-def sst_styles() -> str:
+def glyph_styles() -> str:
     assets = Path(__file__).resolve().parent.parent / "assets"
     license_text = (assets / 'fonts/IBMPlexSans-LICENSE.txt').read_text(encoding='utf-8')
     rules = ['/* Embedded unmodified IBM Plex Sans fonts.\n' + license_text + '\n*/']
     for weight, name in [(400, 'Regular'), (600, 'SemiBold')]:
         encoded = base64.b64encode((assets / f'fonts/IBMPlexSans-{name}.woff2').read_bytes()).decode('ascii')
         rules.append(f'@font-face{{font-family:"IBM Plex Sans";font-style:normal;font-weight:{weight};font-display:block;src:url(data:font/woff2;base64,{encoded}) format("woff2")}}')
-    return '\n'.join(rules) + '\n' + (assets / 'sst-theme.css').read_text(encoding='utf-8')
+    for palette_id, palette in ICON_PALETTES["palettes"].items():
+        for theme in ("light", "dark"):
+            colors = palette[theme]
+            values = {"ink": colors["ink"], "disc": colors["disc"], "cut": colors["disc"],
+                      "border": colors["border"], "muted": colors["muted"], "text": "var(--ink)",
+                      "deployment-bg": colors["ink"], "deployment-line": colors["ink"],
+                      "deployment-ink": "#FFFFFF" if theme == "light" else "#10213B",
+                      "focus": "var(--blue)", "warning": "var(--amber)", "failure": "var(--red)",
+                      "standby": "var(--standby)", "badge-ink": "#FFFFFF" if theme == "light" else "#10213B"}
+            for category in set(ICON_CATEGORIES.values()) | {"neutral"}:
+                values[category] = colors.get("categories", {}).get(category, colors["accent"])
+            selector = f'.app[data-theme="{theme}"][data-icon-palette="{palette_id}"]'
+            rules.append(selector + '{' + ';'.join(f'--glyph-{key}:{value}' for key, value in values.items()) + '}')
+    return '\n'.join(rules) + '\n' + (assets / 'icon-theme.css').read_text(encoding='utf-8')
 
 
 @lru_cache(maxsize=1)
-def sst_tag_metrics() -> dict[str, Any]:
-    return json.loads((Path(__file__).resolve().parent.parent / 'assets/sst-tag-metrics.json').read_text(encoding='utf-8'))
+def glyph_tag_metrics() -> dict[str, Any]:
+    return json.loads((Path(__file__).resolve().parent.parent / 'assets/tag-metrics.json').read_text(encoding='utf-8'))
 
 
 @lru_cache(maxsize=1)
-def sst_ink_bounds() -> dict[str, tuple[float, ...]]:
-    path = Path(__file__).resolve().parent.parent / "assets" / "sst-device-icons.svg"
+def glyph_ink_bounds() -> dict[str, tuple[float, ...]]:
+    path = Path(__file__).resolve().parent.parent / "assets" / "topology-icons.svg"
     return {
-        symbol.attrib["id"].removeprefix("sst-icon-"): tuple(map(float, symbol.attrib["data-ink-bounds"].split()))
+        symbol.attrib["id"].removeprefix("glyph-icon-"): tuple(map(float, symbol.attrib["data-ink-bounds"].split()))
         for symbol in ET.fromstring(path.read_text(encoding="utf-8")).iter("{http://www.w3.org/2000/svg}symbol")
         if "data-ink-bounds" in symbol.attrib
     }
 
 
-def sst_icon_markup(node: dict[str, Any]) -> str:
+def glyph_icon_markup(node: dict[str, Any]) -> str:
     """Fit plain ink to diameter / phi; reserve a lower slot for tag pills."""
-    bounds = sst_ink_bounds().get(node["type"])
+    bounds = glyph_ink_bounds().get(node["type"])
     if bounds is None or len(bounds) != 4 or min(bounds[2:]) <= 0:
-        raise RuntimeError(f'Missing valid ink bounds for SST icon: {node["type"]}')
+        raise RuntimeError(f'Missing valid ink bounds for Topology icon: {node["type"]}')
     x, y, width, height = bounds
     side = max(width, height)
     size = node_radius(node) * 2 * (math.sqrt(5) - 1) / 2
     center_y = 0
-    if node.get('deployment') in SST_DEPLOYMENTS:
+    if node.get('deployment') in DEPLOYMENTS:
         size = 26 if node.get('compact') else 41.5
         center_y = -14
     view_x, view_y = x + (width - side) / 2, y + (height - side) / 2
     return (f'<svg class="node-glyph" x="{-size / 2:.4f}" y="{center_y - size / 2:.4f}" width="{size:.4f}" height="{size:.4f}" '
             f'viewBox="{view_x:.7f} {view_y:.7f} {side:.7f} {side:.7f}">'
-            f'<use href="#sst-icon-{node["type"]}" width="64" height="64"/></svg>')
+            f'<use href="#glyph-icon-{node["type"]}" width="64" height="64"/></svg>')
 
 
-def sst_deployment_markup(node: dict[str, Any]) -> str:
+def glyph_deployment_markup(node: dict[str, Any]) -> str:
     """A structural tag stays larger than, and independent from, status."""
-    tag = SST_DEPLOYMENTS.get(node.get("deployment"))
+    tag = DEPLOYMENTS.get(node.get("deployment"))
     if not tag:
         return ""
     compact = node.get("compact", False)
     height = 26 if compact else 28
     font_size = 11.5 if compact else 12.5
-    metrics = sst_tag_metrics()
+    metrics = glyph_tag_metrics()
     text_metrics = metrics['labels'][tag['label']]
     text_scale = font_size / metrics['em']
     sx, sy, sw, sh = metrics['symbols'][node['deployment']]
@@ -715,7 +731,7 @@ def sst_deployment_markup(node: dict[str, Any]) -> str:
             f'<text class="deployment-text" x="{text_x:.5f}" y="{text_y:.5f}" font-size="{font_size}">{safe_text(tag["label"])}</text></g></g>')
 
 
-def sst_status_markup(node: dict[str, Any]) -> str:
+def glyph_status_markup(node: dict[str, Any]) -> str:
     """Keep status outside the symbol without replacing its category color."""
     status = node.get("status", "normal")
     if status == "normal":
@@ -730,7 +746,7 @@ def sst_status_markup(node: dict[str, Any]) -> str:
     shape, mark = shapes[status]
     # Keep status in a separate upper-right sector when a pill is present.
     distance = node_radius(node) + 7
-    angle = 22.5 if node.get("deployment") in SST_DEPLOYMENTS else 67.5
+    angle = 22.5 if node.get("deployment") in DEPLOYMENTS else 67.5
     badge_x = distance * math.cos(math.radians(angle))
     badge_y = -distance * math.sin(math.radians(angle))
     scale = 0.85 if node.get("compact") else 1
@@ -776,7 +792,7 @@ def render_svg(model: dict[str, Any]) -> str:
     width = model["canvas"]["width"]
     height = model["canvas"]["height"]
     nodes = {node["id"]: node for node in model["nodes"]}
-    icon_set = model["canvas"].get("icon_set", "neutral")
+    icon_set = model["canvas"].get("icon_set", "detailed")
     group_markup: list[str] = []
     for box in group_boxes(model):
         label_width = max(92.0, min(box["w"] - 32.0, len(str(box["label"])) * 11.0 + 34.0))
@@ -827,25 +843,25 @@ def render_svg(model: dict[str, Any]) -> str:
         icon_size = 26 if node["compact"] else 36
         icon_y = -27 if node["compact"] else -34
         compact = " compact" if node["compact"] else ""
-        is_sst = icon_set == "sst" and node["type"] in SST_ICON_CATEGORIES
-        family_class = (" sst in-group" if node.get("group") else " sst") if is_sst else ""
-        category_attr = f' data-icon-category="{SST_ICON_CATEGORIES[node["type"]]}"' if is_sst else ""
-        icon_prefix = "sst-icon" if is_sst else "icon"
-        if node["type"] == "virtual-switch" and not is_sst:
+        is_glyph = icon_set == "detailed" and node["type"] in ICON_CATEGORIES
+        family_class = (" glyph in-group" if node.get("group") else " glyph") if is_glyph else ""
+        category_attr = f' data-icon-category="{ICON_CATEGORIES[node["type"]]}"' if is_glyph else ""
+        icon_prefix = "glyph-icon" if is_glyph else "icon"
+        if node["type"] == "virtual-switch" and not is_glyph:
             icon_type = "switch"
         else:
             icon_type = node["type"]
-        disc_class = ' class="node-disc"' if is_sst else ""
-        node_title = (f'<title>{safe_text(node["label"])} · {safe_text(node["type"])} · {safe_text(node["status"])}</title>' if is_sst else "")
-        status_markup = sst_status_markup(node) if is_sst else ""
-        deployment_markup = sst_deployment_markup(node) if is_sst else ""
-        glyph_markup = (sst_icon_markup(node) if is_sst else
+        disc_class = ' class="node-disc"' if is_glyph else ""
+        node_title = (f'<title>{safe_text(node["label"])} · {safe_text(node["type"])} · {safe_text(node["status"])}</title>' if is_glyph else "")
+        status_markup = glyph_status_markup(node) if is_glyph else ""
+        deployment_markup = glyph_deployment_markup(node) if is_glyph else ""
+        glyph_markup = (glyph_icon_markup(node) if is_glyph else
                         f'<svg x="{-icon_size / 2:.1f}" y="{icon_y:.1f}" width="{icon_size}" height="{icon_size}" viewBox="0 0 64 64"><use href="#{icon_prefix}-{icon_type}"/></svg>')
         node_hit_markup.append(f'<circle class="node-hit" data-node-id="{safe_text(node["id"])}" cx="{x:.1f}" cy="{y:.1f}" r="{hit_radius:.1f}" fill="transparent" stroke="none" pointer-events="all"/>')
         node_markup.append(
             f'<g class="node {node["status"]}{compact}{family_class}" id="{safe_id(node["id"], "node")}" data-node-id="{safe_text(node["id"])}"{category_attr} transform="translate({x:.1f} {y:.1f})">'
             f'{node_title}<circle{disc_class} r="{radius:.1f}"/>{glyph_markup}'
-            f'{label_markup(node, outside=is_sst)}{deployment_markup}{status_markup}</g>'
+            f'{label_markup(node, outside=is_glyph)}{deployment_markup}{status_markup}</g>'
         )
     title_id = safe_id(model["title"], "topology-title")
     desc_id = safe_id(model["title"], "topology-desc")
@@ -911,6 +927,7 @@ def editor_script() -> str:
   if (!app || !svg || !viewport || !modelElement || !editButton) return;
 
   const model = JSON.parse(modelElement.textContent || '{}');
+  document.querySelector('#icon-palette').value = model.canvas.icon_palette;
   const grid = () => Number(model.canvas?.snap || model.canvas?.grid || 24);
   const snap = value => Math.round(Number(value) / grid()) * grid();
   const nodeById = id => model.nodes.find(node => node.id === id);
@@ -948,6 +965,8 @@ def editor_script() -> str:
     const restored = JSON.parse(snapshot);
     Object.keys(model).forEach(key => delete model[key]);
     Object.assign(model, restored);
+    app.dataset.iconPalette = model.canvas.icon_palette;
+    document.querySelector('#icon-palette').value = model.canvas.icon_palette;
     model.canvas.layout = 'manual';
     renderAll();
   };
@@ -1298,6 +1317,13 @@ def editor_script() -> str:
     setStatus('SAVED');
   };
   const saveJson = () => { ensureManual(); updateModelScript(); downloadFile(`${model.title || 'topology'}-model.json`, 'application/json;charset=utf-8', JSON.stringify(model, null, 2)); setStatus('JSON'); };
+  document.querySelector('#icon-palette').addEventListener('change', event => {
+    const before = copyModel();
+    model.canvas.icon_palette = event.target.value;
+    app.dataset.iconPalette = event.target.value;
+    commit(before);
+    updateModelScript();
+  });
 
   svg.addEventListener('pointerdown', event => {
     if (!editing) return;
@@ -1424,23 +1450,28 @@ button.export { width:42px; font-size:11px; font-weight:700; } button:hover { ba
     for original, replacement in export_style_updates:
         output = output.replace(original, replacement)
     output = output.replace('</body>', editor_script() + '</body>', 1)
-    if model["canvas"].get("icon_set") == "sst":
-        css = sst_styles()
+    if model["canvas"].get("icon_set") in {"detailed", "neutral"}:
+        css = glyph_styles()
         output = output.replace('</style>', css + '</style>', 1)
-        output = output.replace('class="app" data-theme=', 'class="app" data-icon-set="sst" data-theme=', 1)
+        palette_options = ''.join(f'<option value="{key}"' + (' selected' if key == model['canvas']['icon_palette'] else '') + f'>{value["label"]}</option>' for key, value in ICON_PALETTES['palettes'].items())
+        picker = f'<label class="palette-picker">Icon palette <select id="icon-palette" aria-label="Icon palette">{palette_options}</select></label>'
+        output = output.replace('<div class="controls">', '<div class="controls">' + picker, 1)
+        output = output.replace('class="app" data-theme=', f'class="app" data-icon-set="{model["canvas"]["icon_set"]}" data-icon-palette="{model["canvas"]["icon_palette"]}" data-theme=', 1)
         # SVG/PNG exports must carry the same two-tone rules and the active
         # theme's resolved variables; a standalone SVG has no .app ancestor.
-        variables = sorted(set(re.findall(r"(--sst-[a-z-]+)\s*:", css)) | {"--canvas", "--group"})
-        export_sst = (
+        variables = sorted(set(re.findall(r"(--glyph-[a-z-]+)\s*:", css)) | {"--canvas", "--group"})
+        export_glyph = (
             f'{json.dumps(variables)}.forEach(name=>{{const value=color(name);if(value)copy.style.setProperty(name,value)}});'
             "style.textContent=style.textContent.replace('font:700 11px Bahnschrift,Arial','font-family:Bahnschrift,Arial;font-weight:700');"
             f'style.textContent+={json.dumps(css)};'
             "copy.querySelectorAll('.node-hit,.edge-hit,#editor-overlay').forEach(element=>element.remove());"
             "copy.querySelectorAll('.editor-selected').forEach(element=>element.classList.remove('editor-selected'));"
         )
-        output = output.replace('copy.insertBefore(style,copy.firstChild);', export_sst + 'copy.insertBefore(style,copy.firstChild);', 1)
+        output = output.replace('copy.insertBefore(style,copy.firstChild);', export_glyph + 'copy.insertBefore(style,copy.firstChild);', 1)
         output = output.replace('const updateModelScript = () => { modelElement.textContent',
-                                'const updateModelScript = () => { model.canvas.theme = app.dataset.theme; modelElement.textContent', 1)
+                                 'const updateModelScript = () => { model.canvas.theme = app.dataset.theme; model.canvas.icon_palette = app.dataset.iconPalette; modelElement.textContent', 1)
+        if not model['canvas'].get('editable', True):
+            output = output.replace('</body>', '<script>document.querySelector("#icon-palette").addEventListener("change",e=>document.querySelector(".app").dataset.iconPalette=e.target.value);</script></body>', 1)
     return output
 
 

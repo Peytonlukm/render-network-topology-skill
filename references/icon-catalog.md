@@ -1,22 +1,30 @@
-# Device Icon Catalog
+# Icons and palettes
 
-Use the approved SST v4 symbols for covered roles and neutral role icons as fallback; do not substitute vendor logos. Prefer the most specific known role; retain generic legacy types when the source does not establish a role. The approved design standard takes precedence over older examples.
+Use the most specific role supported by the supplied facts. The bundled symbols are a generic visual family, not vendor product logos. No role implies a particular manufacturer.
 
-| Category | Canonical types |
-| --- | --- |
-| Network | `internet`, `router`, `switch`, `core-switch`, `distribution-switch`, `access-switch`, `fiber`, `ont`, `cellular-gateway`, `wireless`, `wireless-controller`, `wireless-ap`, `sd-wan`, `branch-site` |
-| Security and delivery | `firewall`, `waf`, `ids-ips`, `ddos-protection`, `load-balancer`, `api-gateway`, `proxy`, `vpn-gateway`, `secure-web-gateway`, `zero-trust-gateway` |
-| Compute and platforms | `server`, `web-server`, `app-server`, `virtual-machine`, `container`, `kubernetes`, `database`, `cache`, `message-queue`, `search`, `dns`, `dhcp`, `directory-service`, `bastion-host`, `monitoring`, `siem`, `backup`, `disaster-recovery` |
-| Storage | `storage`, `nas`, `san`, `object-storage`, `tape-library` |
-| Cloud and facilities | `cloud`, `cloud-region`, `availability-zone`, `vpc`, `subnet`, `cloud-gateway`, `data-center`, `rack`, `ups` |
-| Endpoints and edge | `pc`, `laptop`, `mobile`, `thin-client`, `printer`, `ip-phone`, `camera`, `iot-device`, `industrial-gateway`, `endpoint` |
+## Detailed family
 
-## Current SST v4 catalog
+`assets/icon-system.json` maps 12 roles to semantic categories: `router`, `core-switch`, `firewall`, `zero-trust-gateway`, `server`, `virtual-machine`, `virtual-switch`, `storage`, `cloud`, `rack`, `ups`, `laptop`. The matching symbols are in `topology-icons.svg`. Other roles use the bundled outline family in `device-icons.svg`; do not invent a product identity to select an icon.
 
-Set `canvas.icon_set` to `"sst"` for the SST flat two-tone family. The initial review batch covers `router`, `core-switch`, `firewall`, `zero-trust-gateway`, `server`, `virtual-machine`, `virtual-switch`, `storage`, `cloud`, `rack`, `ups`, and `laptop`. Other device types use the neutral family until the batch is approved and expanded.
+Ordinary circles are 84px in diameter, compact circles 64px, with 2.4px borders. Untagged visible ink is about 61.8% of diameter. A lower deployment pill reserves a separate slot: glyph ink is 41.5px / compact 26px, y=-14; pill inset 5px, height 28px / compact 26px. `tag-metrics.json` contains measured symbol and font bounds.
 
-`virtual-switch` is a new canonical role at rank 2; neutral mode uses the ordinary switch symbol for compatibility. Its layered SST symbol belongs to the compute/virtualization color family. Existing role names do not change. Do not infer that all 80 planned SST symbols are already implemented.
+Deployment modes `ha`, `stack`, `cluster`, `mlag` are independent of runtime status. A tag does not invent peer devices or links. Names stay outside the circle below, with a deliberate offset where needed. Embed unmodified IBM Plex Sans and preserve the bundled OFL notice; use a local Chinese fallback.
 
-The shared `assets/sst-icon-system.json` defines the 12 approved categories and four deployment modes (`ha`, `stack`, `cluster`, `mlag`). Node and Python read the same symbol paths. The v4 deployment pill sits inside the lower disc, inset 5px; use the bundled ink metrics and IBM Plex Sans fonts, not approximated text centering. Deployment and runtime status are separate fields and can coexist. A deployment tag does not invent member devices or links.
+## Six palettes
 
-Use `wireless` / `wireless-ap` for a wireless device role and `cellular-gateway` for a 4G or 5G appliance. Choose connection semantics from the actual link; device type does not change physical links into management dotted lines. Legacy radio-wave effects are compatibility behavior, not the V2 semantic default. Use `compact: true` for repeated endpoint devices, retaining at least 64px circles and 13px names.
+`assets/icon-palettes.json` is the single source for both renderers. Each palette has light and dark ink, accent, muted, disc and border values.
+
+| ID | Name | Use |
+| --- | --- | --- |
+| `ocean` | 海洋蓝 | Default clear blue family |
+| `forest` | 青绿 | Green and teal family |
+| `violet` | 紫罗兰 | Purple family |
+| `copper` | 暖铜 | Warm brown and copper family |
+| `graphite` | 石墨灰 | Restrained neutral family |
+| `categories` | 分类多彩 | Different accents for role categories |
+
+V2: set `scene.icon_palette`; optionally set `node.icon_palette`. Missing node values inherit the scene default. A node override inside a materialized view belongs to that view. The whole-scene default is shared across views. An explicit `node.accent` remains an intentional custom accent; the rest of that icon still follows its palette. Do not recolor links, status markers or business semantics when switching icon palettes.
+
+Legacy Python: set `canvas.icon_set` to `detailed` or `neutral`, and `canvas.icon_palette` to a palette ID. Palette selection is global. Older unrecognized detailed-family names normalize to `detailed`; use canonical names in newly saved models.
+
+A new palette must provide both themes. Verify meaningful ink and accent against the actual disc, deployment text against its pill, and label contrast against the page. Muted fills are secondary detail and must not be the only cue for identity or status.

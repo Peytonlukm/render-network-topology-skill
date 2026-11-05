@@ -1,4 +1,4 @@
 interface:
-  display_name: "Network Topology Renderer"
-  short_description: "Create SST topology diagrams from the approved standard"
-  default_prompt: "Use $render-network-topology with the approved design standard and latest bundled SST icons. Reuse confirmed choices, clarify missing topology facts when needed, and create an editable offline HTML topology diagram with verified file exports."
+  display_name: "Network Topology"
+  short_description: "Offline topology diagrams, editing, and icon palettes"
+  default_prompt: "Use $render-network-topology to create an accurate, editable offline topology diagram with the bundled icons and a suitable palette."

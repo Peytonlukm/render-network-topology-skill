@@ -2,14 +2,19 @@
  * Coordinates in this first-stage specimen are curated, not auto-layout results.
  */
 (function (root, factory) {
-  const api = factory();
+  const api = factory(typeof module === 'object' && module.exports ? require('../../assets/icon-palettes.json') : root.TopologyIconPalettes);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.TopologyScene = api;
-})(typeof globalThis === 'object' ? globalThis : this, function () {
+})(typeof globalThis === 'object' ? globalThis : this, function (iconPalettes) {
   'use strict';
+  const paletteIds=Object.keys(iconPalettes.palettes);
+  function iconPalette(id,theme='light'){
+    const key=paletteIds.includes(id)?id:iconPalettes.default;
+    return {...iconPalettes.palettes[key][theme],id:key};
+  }
   const PALETTES = {
-    light: {paper:'#FFFFFF',ink:'#00296D',muted:'#526B86',soft:'#566D87',rule:'#D7E2EE',zone:'#F5F8FC',inner:'#FFFFFF',note:'#F4F7FB',disc:'#F0F5FC',border:'#6C87A6',line:'#62778D',blue:'#007FB9',cyan:'#007E9E',pink:'#CF327F',green:'#188771',amber:'#946000',failure:'#BB3546',pipe:'#E9F0F7',standby:'#667589'},
-    dark: {paper:'#0B182A',ink:'#E8F1FF',muted:'#A0B4CE',soft:'#8CA4C1',rule:'#2C425D',zone:'#102139',inner:'#142A45',note:'#14263D',disc:'#10294D',border:'#6F8AAB',line:'#8298B3',blue:'#65C6F4',cyan:'#56D4EE',pink:'#F283B7',green:'#63C9AE',amber:'#F2BA55',failure:'#FF8494',pipe:'#1D3652',standby:'#A0B0C8'}
+    light: {paper:'#FFFFFF',ink:'#1E293B',muted:'#526B86',soft:'#566D87',rule:'#D7E2EE',zone:'#F5F8FC',inner:'#FFFFFF',note:'#F4F7FB',disc:'#F0F5FC',border:'#6C87A6',line:'#62778D',blue:'#007FB9',cyan:'#007E9E',pink:'#CF327F',green:'#188771',amber:'#946000',failure:'#BB3546',pipe:'#E9F0F7',standby:'#667589'},
+    dark: {paper:'#0B182A',ink:'#E5EDF5',muted:'#A0B4CE',soft:'#8CA4C1',rule:'#2C425D',zone:'#102139',inner:'#142A45',note:'#14263D',disc:'#10294D',border:'#6F8AAB',line:'#8298B3',blue:'#65C6F4',cyan:'#56D4EE',pink:'#F283B7',green:'#63C9AE',amber:'#F2BA55',failure:'#FF8494',pipe:'#1D3652',standby:'#A0B0C8'}
   };
   // One pixel below the first visual-review batch, applied to every diagram role.
   const TYPE = Object.freeze({title:27,subtitle:13,eyebrow:10,region:17,regionNote:11,
@@ -219,7 +224,7 @@
   function deploymentMarkup(n,r,assets,p) {
     if(!n.deployment)return '';
     const tag=assets.iconSystem?.deployments[n.deployment],metrics=assets.tagMetrics;
-    if(!tag||!metrics)throw Error('Deployment tags require the current SST catalog and measured font metrics.');
+    if(!tag||!metrics)throw Error('Deployment tags require the bundled icon catalog and measured font metrics.');
     const layout=assets.iconSystem.layout,h=n.compact?layout.compactTagHeight:layout.tagHeight,
       size=n.compact?layout.compactTagFontSize:layout.tagFontSize,scale=size/metrics.em,m=metrics.labels[tag.label],
       [sx,sy,sw,sh]=metrics.symbols[n.deployment],symbolScale=.8,symbolWidth=sw*symbolScale,
@@ -243,7 +248,7 @@
 
   function css(theme, prefix) {
     const p=PALETTES[theme];
-    const rules = `.topology-v2{font-size:${TYPE.node}px;font-family:"Source Han Sans SC","Microsoft YaHei",Arial,sans-serif;color:${p.ink};text-rendering:geometricPrecision}.topology-v2 text{fill:${p.ink}}.topology-v2 .diagram-title{font-size:${TYPE.title}px;font-weight:650}.topology-v2 .diagram-subtitle{font-size:${TYPE.subtitle}px;fill:${p.muted}}.topology-v2 .eyebrow{font:${TYPE.eyebrow}px Consolas,monospace;letter-spacing:1.8px;fill:${p.soft}}.topology-v2 .region-title{font-size:${TYPE.region}px;font-weight:650}.topology-v2 .region-note{font-size:${TYPE.regionNote}px;fill:${p.muted}}.topology-v2 .node-name{font-size:${TYPE.node}px;font-weight:600}.topology-v2 .node-meta{font:${TYPE.meta}px Consolas,"Microsoft YaHei",monospace;fill:${p.muted}}.topology-v2 .edge-caption{font-size:${TYPE.edge}px;fill:${p.muted}}.topology-v2 .annotation-title{font-size:${TYPE.noteTitle}px;font-weight:600;fill:${p.muted}}.topology-v2 .annotation-body{font-size:${TYPE.noteBody}px;fill:${p.muted}}.topology-v2 .legend-text{font-size:${TYPE.legend}px;fill:${p.muted}}.topology-v2 .footer-note{font-size:${TYPE.footer}px;fill:${p.soft}}.topology-v2 .note-frame{fill:${p.note};stroke:${p.rule};stroke-width:1}.sst-solid{fill:var(--sst-ink);stroke:none}.sst-muted{fill:var(--sst-muted);stroke:none}.sst-accent{fill:var(--sst-accent);stroke:none}.sst-cutout{fill:var(--sst-cut);stroke:none}.sst-line,.sst-cut-line,.sst-accent-line{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.sst-line{stroke:var(--sst-ink)}.sst-cut-line{stroke:var(--sst-cut)}.sst-accent-line{stroke:var(--sst-accent)}.topology-v2 .packet-moving{visibility:hidden}.topology-v2 .packet-static{visibility:visible}.topology-v2.is-playing .packet-moving{visibility:visible}.topology-v2.is-playing .packet-static{visibility:hidden}@media(prefers-reduced-motion:reduce){.topology-v2 .packet-moving{visibility:hidden!important}.topology-v2 .packet-static{visibility:visible!important}}`;
+    const rules = `.topology-v2{font-size:${TYPE.node}px;font-family:"Source Han Sans SC","Microsoft YaHei",Arial,sans-serif;color:${p.ink};text-rendering:geometricPrecision}.topology-v2 text{fill:${p.ink}}.topology-v2 .diagram-title{font-size:${TYPE.title}px;font-weight:650}.topology-v2 .diagram-subtitle{font-size:${TYPE.subtitle}px;fill:${p.muted}}.topology-v2 .eyebrow{font:${TYPE.eyebrow}px Consolas,monospace;letter-spacing:1.8px;fill:${p.soft}}.topology-v2 .region-title{font-size:${TYPE.region}px;font-weight:650}.topology-v2 .region-note{font-size:${TYPE.regionNote}px;fill:${p.muted}}.topology-v2 .node-name{font-size:${TYPE.node}px;font-weight:600}.topology-v2 .node-meta{font:${TYPE.meta}px Consolas,"Microsoft YaHei",monospace;fill:${p.muted}}.topology-v2 .edge-caption{font-size:${TYPE.edge}px;fill:${p.muted}}.topology-v2 .annotation-title{font-size:${TYPE.noteTitle}px;font-weight:600;fill:${p.muted}}.topology-v2 .annotation-body{font-size:${TYPE.noteBody}px;fill:${p.muted}}.topology-v2 .legend-text{font-size:${TYPE.legend}px;fill:${p.muted}}.topology-v2 .footer-note{font-size:${TYPE.footer}px;fill:${p.soft}}.topology-v2 .note-frame{fill:${p.note};stroke:${p.rule};stroke-width:1}.glyph-solid{fill:var(--glyph-ink);stroke:none}.glyph-muted{fill:var(--glyph-muted);stroke:none}.glyph-accent{fill:var(--glyph-accent);stroke:none}.glyph-cutout{fill:var(--glyph-cut);stroke:none}.glyph-line,.glyph-cut-line,.glyph-accent-line{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.glyph-line{stroke:var(--glyph-ink)}.glyph-cut-line{stroke:var(--glyph-cut)}.glyph-accent-line{stroke:var(--glyph-accent)}.topology-v2 .packet-moving{visibility:hidden}.topology-v2 .packet-static{visibility:visible}.topology-v2.is-playing .packet-moving{visibility:visible}.topology-v2.is-playing .packet-static{visibility:hidden}@media(prefers-reduced-motion:reduce){.topology-v2 .packet-moving{visibility:hidden!important}.topology-v2 .packet-static{visibility:visible!important}}`;
     // Each comparison pane owns its theme; <use> glyph classes inherit variables.
     return rules.replaceAll('"Source Han Sans SC","Microsoft YaHei",Arial,sans-serif','"IBM Plex Sans","Source Han Sans SC","Microsoft YaHei",sans-serif')
       .replaceAll('Consolas,"Microsoft YaHei",monospace','"IBM Plex Sans","Source Han Sans SC",sans-serif')
@@ -253,7 +258,7 @@
   function render(scene, options={}) {
     const theme=options.theme||'light',p=PALETTES[theme],view=options.view||'overview';
     const m=resolve(scene,view),prefix=(options.prefix||`${scene.id}-${view}-${theme}`).replace(/[^a-zA-Z0-9_-]/g,'-');
-    const assets=options.assets||{},width=m.width||1600,height=m.height||1000;
+    const assets=options.assets||{},width=m.width||1600,height=m.height||1000,baseIcon=iconPalette(options.iconPalette||scene.icon_palette,theme);
     const objects=new Map([...m.groups,...m.nodes,...m.junctions.map(j=>({...j,kind:'junction'})),...m.rings].map(n=>[n.id,n]));
     const color=k=>p[k]||k||p.line;
     const visibleEdges=m.edges.filter(e=>!e.flow||!options.flow||options.flow==='all'||e.flow===options.flow);
@@ -331,24 +336,23 @@
 
     m.nodes.forEach(n=>{
       const r=n.compact?32:42,bounds=assets.bounds?.[n.type],category=assets.iconSystem?.categories[n.type]||CATEGORIES[n.type]||'network',
-        palette=assets.iconThemes?.[theme]||{},categoryKey=category==='security'?'security':['compute','storage'].includes(category)?'compute':['network','endpoint'].includes(category)?'network':'neutral',
-        accent=n.accent?color(n.accent):palette['--sst-'+categoryKey]||p.blue;
+        palette=iconPalette(n.icon_palette||baseIcon.id,theme),accent=n.accent?color(n.accent):palette.categories?.[category]||palette.accent;
       const group=m.groups.find(g=>g.id===n.group),framed=group&&!['layer','collection','specimen'].includes(group.kind),
         labelFill=group?.kind==='band'?p.pipe:framed?(group?.parent?p.inner:p.zone):p.paper;
-      const stroke=n.focus?p.blue:p.border;
-      nodes+=`<g class="node" data-node-id="${esc(n.id)}" data-icon-type="${esc(n.type)}" data-radius="${r}" transform="translate(${n.x} ${n.y})" style="--sst-accent:${accent}"><title>${esc(n.full_label||n.label)}${n.meta?' · '+esc(n.meta):''}</title><circle class="node-disc" r="${r}" fill="${p.disc}" stroke="${stroke}" stroke-width="${n.focus?3:2.4}"/>`;
+      const stroke=n.focus?accent:palette.border;
+      nodes+=`<g class="node" data-node-id="${esc(n.id)}" data-icon-type="${esc(n.type)}" data-radius="${r}" data-icon-palette="${palette.id}" transform="translate(${n.x} ${n.y})" style="--glyph-accent:${accent};--glyph-ink:${palette.ink};--glyph-muted:${palette.muted};--glyph-cut:${palette.disc}"><title>${esc(n.full_label||n.label)}${n.meta?' · '+esc(n.meta):''}</title><circle class="node-disc" r="${r}" fill="${palette.disc}" stroke="${stroke}" stroke-width="${n.focus?3:2.4}"/>`;
       if(bounds) {
         const [x,y,w,h]=bounds,side=Math.max(w,h),size=n.deployment?(n.compact?26:41.5):2*r*TOKENS.glyphRatio,
           centerY=n.deployment?-14:0,vx=x+(w-side)/2,vy=y+(h-side)/2;
-        nodes+=`<svg class="node-glyph" x="${-size/2}" y="${centerY-size/2}" width="${size}" height="${size}" viewBox="${vx} ${vy} ${side} ${side}"><use href="#${prefix}-sst-icon-${esc(n.type)}" width="64" height="64"/></svg>`;
-      }else nodes+=`<svg class="node-glyph neutral" x="-23" y="-23" width="46" height="46" viewBox="0 0 64 64" fill="none" stroke="${p.ink}" stroke-width="2.6"><use href="#${prefix}-icon-${esc(n.type)}"/></svg>`;
+        nodes+=`<svg class="node-glyph" x="${-size/2}" y="${centerY-size/2}" width="${size}" height="${size}" viewBox="${vx} ${vy} ${side} ${side}"><use href="#${prefix}-glyph-icon-${esc(n.type)}" width="64" height="64"/></svg>`;
+      }else nodes+=`<svg class="node-glyph neutral" x="-23" y="-23" width="46" height="46" viewBox="0 0 64 64" fill="none" stroke="${palette.ink}" stroke-width="2.6"><use href="#${prefix}-icon-${esc(n.type)}"/></svg>`;
       const lines=Array.isArray(n.label)?n.label:[n.label],nameWidth=Math.max(...lines.map(l=>textWidth(l,TYPE.node)),n.meta?textWidth(n.meta,TYPE.meta):0)+14;
       nodes+=`<g class="node-label" transform="translate(${n.labelOffset?.[0]||0} ${n.labelOffset?.[1]||0})"><rect x="${-nameWidth/2}" y="${r+9}" width="${nameWidth}" height="${lines.length*19+(n.meta?16:0)}" rx="3" fill="${labelFill}"/>`;
       lines.forEach((line,i)=>nodes+=text(0,r+24+i*19,line,'node-name','text-anchor="middle"'));
       if(n.meta)nodes+=text(0,r+42+(lines.length-1)*19,n.meta,'node-meta','text-anchor="middle"');
       nodes+='</g>';
       if(n.count)nodes+=`<g class="count-badge"><rect x="24" y="-53" width="45" height="23" rx="5" fill="${p.paper}" stroke="${p.rule}"/>${text(46,-37,'×'+n.count,'edge-caption','text-anchor="middle"')}</g>`;
-      nodes+=deploymentMarkup(n,r,assets,p)+statusMarkup(n,r,p);
+      nodes+=deploymentMarkup(n,r,assets,{...p,ink:palette.ink})+statusMarkup(n,r,{...p,disc:palette.disc});
       nodes+='</g>';
     });
     m.annotations.forEach((a,index)=>{
@@ -370,9 +374,9 @@
     const meta=options.includeHeader===false?'':text(64,56,m.title,'diagram-title')+
       (m.subtitle?noteBox(64,70,[{value:m.subtitle,cls:'diagram-subtitle',size:TYPE.subtitle}],{maxWidth:width-128,padY:5,kind:'subtitle'}):'')+
       text(width-64,54,`${scene.number||'00'} / ${view==='engineering'?'DETAIL':'OVERVIEW'}${m.edit_validation?.status==='draft'?' / 编辑待修':''}`,'eyebrow','text-anchor="end"');
-    const footer=noteBox(64,height-35,[{value:'SST TOPOLOGY / 合成设计场景 · '+(m.viewNote||'颜色与线宽表达类别，不代表测量值'),cls:'footer-note',size:TYPE.footer}],
+    const footer=noteBox(64,height-35,[{value:'NETWORK TOPOLOGY / '+(scene.stage==='visual-specimen'?'合成设计场景 · ':'')+(m.viewNote||'颜色与线宽表达类别，不代表测量值'),cls:'footer-note',size:TYPE.footer}],
       {maxWidth:width-128,padY:4,kind:'footer'});
-    return `<svg xmlns="http://www.w3.org/2000/svg" id="${prefix}-root" class="topology-v2" style="--sst-ink:${p.ink};--sst-muted:${theme==='light'?'#A7BCDA':'#536E96'};--sst-cut:${p.disc}" data-scene="${esc(scene.id)}" data-view="${view}" data-theme="${theme}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-labelledby="${prefix}-title ${prefix}-desc"><title id="${prefix}-title">${esc(m.title)}</title><desc id="${prefix}-desc">${esc(scene.description||m.subtitle||m.title)}</desc><defs><style>${esc((options.embedFonts===false?'':assets.fontCss||'')+css(theme,prefix))}</style>${definitions}${markers}</defs><rect class="paper" width="${width}" height="${height}" fill="${p.paper}"/>${meta}<g class="regions">${regions}</g><g class="ring-guides">${ringGuides}</g><g class="connections">${links}</g><g class="edge-labels">${labels}</g><g class="nodes">${nodes}</g><g class="annotations">${annotations}</g><path d="M64 ${height-95} H${width-64}" stroke="${p.rule}" stroke-width="1"/><g class="legend">${legend}</g>${footer}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" id="${prefix}-root" class="topology-v2" data-icon-palette="${baseIcon.id}" data-scene="${esc(scene.id)}" data-view="${view}" data-theme="${theme}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-labelledby="${prefix}-title ${prefix}-desc"><title id="${prefix}-title">${esc(m.title)}</title><desc id="${prefix}-desc">${esc(scene.description||m.subtitle||m.title)}</desc><defs><style>${esc((options.embedFonts===false?'':assets.fontCss||'')+css(theme,prefix))}</style>${definitions}${markers}</defs><rect class="paper" width="${width}" height="${height}" fill="${p.paper}"/>${meta}<g class="regions">${regions}</g><g class="ring-guides">${ringGuides}</g><g class="connections">${links}</g><g class="edge-labels">${labels}</g><g class="nodes">${nodes}</g><g class="annotations">${annotations}</g><path d="M64 ${height-95} H${width-64}" stroke="${p.rule}" stroke-width="1"/><g class="legend">${legend}</g>${footer}</svg>`;
   }
-  return {PALETTES,TYPE,TOKENS,resolve,render,geometry,ringPositions,roundPath,endpoint,textWidth};
+  return {PALETTES,TYPE,TOKENS,iconPalettes,paletteIds,iconPalette,resolve,render,geometry,ringPositions,roundPath,endpoint,textWidth};
 });

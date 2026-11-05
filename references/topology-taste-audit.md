@@ -1,17 +1,17 @@
 # Topology Taste Audit
 
-Read the approved [v1.0 standard](topology-design-standard.md) for authoritative rules. This checklist replaces the prior left-to-right, circle-internal-label, and standby-dash defaults.
+Read the approved [v1.0 standard](topology-design-standard.md) for authoritative rules. Use it to review the actual output, with the user requirements taking precedence over visual defaults.
 
 ## Before drawing
 
 - Identify the reader's task and a main reading path. Combine local hierarchy, ring, grid, nested, or unconnected layouts as the facts require.
 - Establish real sites and administrative/security/network scopes. Use whitespace and headings for ordinary layers; do not create decorative boundary frames.
 - Preserve topology facts, known endpoint identity, aggregate members, and uncertainty. Unknown links do not appear as confirmed connections.
-- Keep SST categories, deployment modes, operational states, and business colors as separate dimensions.
+- Keep Topology categories, deployment modes, operational states, and business colors as separate dimensions.
 
 ## Visual and routing checks
 
-- Normal SST circles: 84/64px diameter, 2.4px border. Untagged ink: 61.8%, centered. Tagged ink: 41.5/26px, center y=-14. Bottom pills: 28/26px, inset 5px, measured symbol/text centering.
+- Normal Topology circles: 84/64px diameter, 2.4px border. Untagged ink: 61.8%, centered. Tagged ink: 41.5/26px, center y=-14. Bottom pills: 28/26px, inset 5px, measured symbol/text centering.
 - Names: outside/below, horizontal, at least 13px, maximum two lines. A unique short display name retains its full name. Six o'clock conflicts move the name to the clear lower side, retaining its obstacle box.
 - Main reading direction can differ locally. Allocate distinct ports about each local axis, in target order, using symmetric pairs where possible. Move unlocked devices before inventing circuitous symmetry.
 - Neutral physical solid lines, logical dashed lines, management dotted lines. Independent main/standby edges keep individual IDs, styles, labels, endpoints, and failure corridors. Never encode standby merely as dashes.

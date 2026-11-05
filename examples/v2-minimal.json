@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "standards_version": "1.0",
+  "id": "my-topology",
+  "name": "网络连接示例",
+  "family": "双站点",
+  "width": 1000,
+  "height": 660,
+  "icon_palette": "ocean",
+  "title": "网络连接示例",
+  "subtitle": "从两台设备开始，按真实连接扩展模型。",
+  "read": "两个站点通过一条已知物理线路连接。",
+  "meaning": "图标颜色与线路语义相互独立。",
+  "groups": [],
+  "nodes": [
+    {
+      "id": "router-a",
+      "label": "路由器 A",
+      "type": "router",
+      "x": 280,
+      "y": 320,
+      "status": "normal"
+    },
+    {
+      "id": "router-b",
+      "label": "路由器 B",
+      "type": "router",
+      "x": 720,
+      "y": 320,
+      "status": "normal",
+      "icon_palette": "forest"
+    }
+  ],
+  "edges": [
+    {
+      "id": "link-ab",
+      "source": "router-a",
+      "target": "router-b",
+      "geometry": "line",
+      "semantics": "physical",
+      "certainty": "actual",
+      "status": "normal",
+      "direction": false
+    }
+  ],
+  "rings": [],
+  "junctions": [],
+  "annotations": [],
+  "legend": [
+    {
+      "label": "物理连接",
+      "color": "line",
+      "semantics": "physical"
+    }
+  ]
+}

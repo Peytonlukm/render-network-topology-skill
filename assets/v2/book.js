@@ -15,8 +15,8 @@
     document.body.dataset.theme=state.theme;
     if(!state.scene.views?.[state.view])state.view='overview';
     q('#scene-name').textContent=state.scene.name;q('#scene-description').textContent=state.scene.subtitle;
-    q('#scene-counter').textContent=state.scene.number+' / '+(state.scene.id==='connections'?'CONNECTIONS':state.scene.composition_example?'MIXED STUDY':'08 COMPOSITIONS');
-    q('#scene-eyebrow').textContent=state.scene.id==='connections'?'LINE LANGUAGE / SIX EXPRESSIONS':'COMPOSITION STUDY / '+state.scene.family;
+    q('#scene-counter').textContent=state.scene.number+' / '+(state.scene.id==='connections'?'CONNECTIONS':state.scene.composition_example?'MIXED STUDY':String(scenes.filter(s=>!s.composition_example&&s.id!=='connections').length).padStart(2,'0')+' COMPOSITIONS');
+    q('#scene-eyebrow').textContent=state.scene.id==='connections'?'LINE LANGUAGE / SIX EXPRESSIONS':(state.scene.stage==='visual-specimen'?'COMPOSITION STUDY / ':'NETWORK TOPOLOGY / ')+state.scene.family;
     document.querySelectorAll('.scene-tab').forEach(b=>{b.classList.toggle('active',b.dataset.scene===state.scene.id);b.setAttribute('aria-current',b.dataset.scene===state.scene.id?'page':'false')});
     q('#view-controls').hidden=!state.scene.views?.engineering;
     document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(state.view===b.dataset.view)));
@@ -26,7 +26,8 @@
     drawing.classList.toggle('compare',state.compare);
     drawing.innerHTML=themes.map(theme=>(state.compare?`<div class="compare-frame" style="--diagram:${TopologyScene.PALETTES[theme].paper};--muted:${TopologyScene.PALETTES[theme].muted}"><div class="frame-label">${theme==='light'?'LIGHT / 浅色':'DARK / 深色'}</div>`:'')+TopologyScene.render(state.scene,{assets,theme,view:state.view,flow:state.flow,embedFonts:false,prefix:'book-'+state.scene.id+'-'+state.view+'-'+theme})+(state.compare?'</div>':'')).join('');
     q('#theme').textContent=state.theme==='light'?'深色主题':'浅色主题';q('#compare').setAttribute('aria-pressed',String(state.compare));
-    q('#read').textContent=state.scene.read;q('#meaning').textContent=state.scene.meaning;q('#focus').textContent=state.scene.focus;
+    q('#icon-palette').value=state.scene.icon_palette||TopologyScene.iconPalettes.default;
+    q('#read').textContent=state.scene.read||'';q('#meaning').textContent=state.scene.meaning||'';q('#focus').textContent=state.scene.focus||'';
     const current=TopologyScene.resolve(state.scene,state.view);
     q('#counts').textContent=`${current.nodes.length} 个显示对象 · ${current.edges.filter(e=>!e.flow).length} 个基础关系`;
     q('#play').disabled=!drawing.querySelector('animateMotion')||reduced.matches;
@@ -37,6 +38,7 @@
   function selectScene(id){state.scene=scenes.find(s=>s.id===id)||scenes[0];state.flow=state.scene.default_flow||'all';state.view='overview';render();}
   q('#scene-nav').addEventListener('click',event=>{const button=event.target.closest('[data-scene]');if(button)selectScene(button.dataset.scene)});
   q('#theme').addEventListener('click',()=>{state.theme=state.theme==='light'?'dark':'light';render()});
+  q('#icon-palette').addEventListener('change',event=>editor.setPalette(event.target.value));
   q('#compare').addEventListener('click',()=>{state.compare=!state.compare;render()});
   q('#view-controls').addEventListener('click',event=>{const button=event.target.closest('[data-view]');if(button){state.view=button.dataset.view;render()}});
   q('#flow-filter').addEventListener('change',event=>{state.flow=event.target.value;render()});

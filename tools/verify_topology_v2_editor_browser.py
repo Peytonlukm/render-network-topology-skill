@@ -4,9 +4,10 @@ import json
 import subprocess
 import verify_topology_v2_browser as b
 
+b.SESSION = 'topo-v2-editor-1030'
 OUT=b.OUT
 CHECKS=OUT/'verification/editor'
-CHECKS.mkdir(parents=True, exist_ok=True)
+CHECKS.mkdir(exist_ok=True)
 js,command,require=b.js,b.command,b.require
 checks=[]
 
@@ -170,10 +171,8 @@ def main():
     record('Edited PNG reopens at full canvas size',js("document.querySelector('img').naturalWidth===1600&&document.querySelector('img').naturalHeight===1000"))
     report={'passed':True,'checks':checks,'exports':exports,'initial_layout_checks':audit_defaults,'ring_geometry':ring_check,'mobile':mobile,'export_validation':'Actual button Blob bytes captured; native system file save is not claimed.'}
     (OUT/'verification/editor-browser-checks.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    command('close')
     print(json.dumps({'passed':True,'checks':len(checks),'exports':len(exports)}))
 
 if __name__=='__main__':
-    try:
-        main()
-    finally:
-        subprocess.run([str(b.BROWSER), '--session', b.SESSION, 'close'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20, check=False)
+    main()

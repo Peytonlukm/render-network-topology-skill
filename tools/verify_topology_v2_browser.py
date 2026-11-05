@@ -19,8 +19,8 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'outputs/Topology_V2_Design'
 CHECKS = OUT / 'verification'
-SESSION = f'topology-v2-test-{os.getpid()}'
-BROWSER = Path(os.environ.get('APPDATA', '')) / 'npm/node_modules/agent-browser/bin/agent-browser-win32-x64.exe'
+SESSION = 'topo-v2-generic-design'
+BROWSER = Path(os.environ.get('TOPOLOGY_BROWSER') or (Path(os.environ.get('APPDATA', '')) / 'npm/node_modules/agent-browser/bin/agent-browser-win32-x64.exe'))
 if not BROWSER.is_file():
     BROWSER = Path(shutil.which('agent-browser') or 'agent-browser')
 
@@ -77,7 +77,7 @@ GEOMETRY = '''(()=>{
     const actual=[box.x-pad,box.y-pad,box.width+2*pad,box.height+2*pad];
     const m=use.getScreenCTM(),d=disc.getScreenCTM(),p=new DOMPoint(actual[0]+actual[2]/2,actual[1]+actual[3]/2).matrixTransform(m),c=new DOMPoint(0,0).matrixTransform(d);
     const b=n.querySelector('.node-label').getBBox();
-    return {id:item.id,type:item.type,x:item.x,y:item.y,r,label:{x:b.x+item.x+(item.labelOffset?.[0]||0),y:b.y+item.y+(item.labelOffset?.[1]||0),w:b.width,h:b.height},sst:!!declared,
+    return {id:item.id,type:item.type,x:item.x,y:item.y,r,label:{x:b.x+item.x+(item.labelOffset?.[0]||0),y:b.y+item.y+(item.labelOffset?.[1]||0),w:b.width,h:b.height},glyph:!!declared,
       ratio:Math.max(actual[2],actual[3])*m.a/(2*r*d.a),centerError:Math.hypot(p.x-c.x,p.y-c.y-(item.deployment?-14:0)*d.d),deployment:item.deployment||null,compact:!!item.compact,focus:!!item.focus,
       outside:[...n.querySelectorAll('.node-label text')].every(t=>t.getBBox().y>r),stroke:Number(getComputedStyle(disc).strokeWidth.replace('px',''))}});
   const paths=[...svg.querySelectorAll('.connection-main')];const collisions=[];
@@ -152,6 +152,7 @@ def main():
                    stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=45,check=True)
     command('set', 'viewport', '1680', '1120')
     command('open', (OUT / 'index.html').as_uri())
+    command('set', 'media', 'light')
     instrument()
     exports, geometry, ring_continuity, tag_checks, standard_checks = [], [], [], [], []
     for item in manifest['variants']:
@@ -177,8 +178,8 @@ def main():
         require(len(styles) == 1, f'Mixed explanation frame colors: {styles}')
         for n in check['nodes']:
             require(n['outside'] and n['stroke'] == (3 if n['focus'] else 2.4), f'Icon frame or label: {n}')
-            if n['sst']:
-                require(abs(n['ratio'] - ((26 if n['compact'] else 41.5)/(64 if n['compact'] else 84) if n['deployment'] else (5**.5-1)/2)) < .0001 and n['centerError'] < .01, f'SST geometry: {n}')
+            if n['glyph']:
+                require(abs(n['ratio'] - ((26 if n['compact'] else 41.5)/(64 if n['compact'] else 84) if n['deployment'] else (5**.5-1)/2)) < .0001 and n['centerError'] < .01, f'Topology geometry: {n}')
         if scene == 'ring':
             ring_check = js(RING_CONTINUITY)
             ring_check['theme'] = theme
@@ -192,7 +193,7 @@ def main():
             feature = js(STANDARD_FEATURES)
             require(feature['fontsLoaded'] and not feature['semanticErrors'] and feature['overlaysOnBase'] and feature['layersUnframed'], f'V1 feature mismatch: {feature}')
             standard_checks.append(dict(feature, scene=scene, view=view, theme=theme))
-            measured_tags = js((ROOT / 'tools/sst_geometry_checks.js').read_text(encoding='utf-8').replace("document.querySelectorAll('.edge')", "document.querySelectorAll('#drawing .connection-main')").replace('pill.x-4, y:pill.y-4, right:pill.right+4, bottom:pill.bottom+4','pill.x-4*scale, y:pill.y-4*scale, right:pill.right+4*scale, bottom:pill.bottom+4*scale') + "\nmeasureSstDeployment('#drawing .node-deployment')")
+            measured_tags = js((ROOT / 'tools/glyph_geometry_checks.js').read_text(encoding='utf-8').replace("document.querySelectorAll('.edge')", "document.querySelectorAll('#drawing .connection-main')").replace('pill.x-4, y:pill.y-4, right:pill.right+4, bottom:pill.bottom+4','pill.x-4*scale, y:pill.y-4*scale, right:pill.right+4*scale, bottom:pill.bottom+4*scale') + "\nmeasureIconDeployment('#drawing .node-deployment')")
             for tag in measured_tags:
                 require(tag['textFits'] and tag['bottomInside'] and tag['lowerHalf'] and tag['stateClear'] and tag['glyphGap'] > 1.5 and tag['sideOverhang'] <= 8 and max(tag['pillCenterError'],tag['contentCenterError'],tag['contentVerticalError']) < .15 and tag['loadedFonts'] and tag['edgeCrossings'] == 0, f'Bad v4 tag geometry: {tag}')
             tag_checks.append(dict(scene=scene, view=view, theme=theme, tags=measured_tags))
@@ -211,8 +212,8 @@ def main():
     js('''(()=>{const host=document.createElement('div');host.id='tag-probe';host.style.cssText='position:absolute;left:-10000px;top:0;width:1600px';document.body.append(host);
       const types=['firewall','core-switch','server','core-switch'],tags=['ha','stack','cluster','mlag'],nodes=[];
       for(const compact of [false,true])tags.forEach((deployment,i)=>nodes.push({id:'tag-'+compact+'-'+i,label:deployment,type:types[i],x:200+i*250,y:compact?420:220,compact,deployment,status:i===0?'warning':i===2?'standby':'normal'}));
-      host.innerHTML=TopologyScene.render({id:'tag-probe',title:'SST v4',nodes,edges:[]},{assets:sampleBook.assets,embedFonts:false,motion:false});})()''')
-    compact_tags = js((ROOT / 'tools/sst_geometry_checks.js').read_text(encoding='utf-8') + "\nmeasureSstDeployment('#tag-probe .node-deployment')")
+      host.innerHTML=TopologyScene.render({id:'tag-probe',title:'Deployment tags',nodes,edges:[]},{assets:sampleBook.assets,embedFonts:false,motion:false});})()''')
+    compact_tags = js((ROOT / 'tools/glyph_geometry_checks.js').read_text(encoding='utf-8') + "\nmeasureIconDeployment('#tag-probe .node-deployment')")
     require(len(compact_tags) == 8, 'Four deployment modes at both sizes')
     for tag in compact_tags:
         require(tag['textFits'] and tag['bottomInside'] and tag['lowerHalf'] and tag['stateClear'] and
@@ -241,7 +242,7 @@ def main():
       fills:[...document.querySelectorAll('#drawing .diagram-title')].map(n=>getComputedStyle(n).fill),
       ids:[...document.querySelectorAll('#drawing [id]')].map(n=>n.id)})''')
     require(compare['roots'] == 2 and len(compare['ids']) == len(set(compare['ids'])), 'Comparison ID collision')
-    require(compare['fills'] == ['rgb(0, 41, 109)', 'rgb(232, 241, 255)'], f'Comparison theme leaked: {compare["fills"]}')
+    require(compare['fills'] == ['rgb(30, 41, 59)', 'rgb(229, 237, 245)'], f'Comparison theme leaked: {compare["fills"]}')
     command('screenshot', str(OUT / 'previews/book-compare.png'))
     command('click', '#compare')
     command('click', '#zoom-in')
@@ -265,7 +266,7 @@ def main():
     command('click', '#play')
     require(not js('sampleBook.state.playing'), 'Return to static')
     command('set', 'media', 'light', 'reduced-motion')
-    require(js("document.querySelector('#play').disabled"), 'Reduced-motion preference')
+    require(js("(async()=>{const start=Date.now();while(!document.querySelector('#play').disabled&&Date.now()-start<1500)await new Promise(r=>setTimeout(r,20));return matchMedia('(prefers-reduced-motion:reduce)').matches&&document.querySelector('#play').disabled})()"), 'Reduced-motion preference')
     command('set', 'media', 'light')
 
     command('click', '[data-scene="connections"]')
@@ -301,7 +302,7 @@ def main():
     command('open', (OUT / 'index.html').as_uri())
     command('screenshot', str(OUT / 'previews/book-desktop.png'))
     report = {'stage':'visual-specimen', 'variants':len(geometry), 'geometry':geometry,
-              'ring_continuity':ring_continuity,'standard_v1':standard_checks,'sst_v4_tags':tag_checks,'sst_v4_compact_probe':compact_tags,
+              'ring_continuity':ring_continuity,'standard_v1':standard_checks,'glyph_v4_tags':tag_checks,'glyph_v4_compact_probe':compact_tags,
               'typography_delta_px':-1,'explanation_frames_uniform':True,'long_note_wrap':wrap,
               'exports':exports, 'comparison_unique_ids':True, 'flow_filter':True,
               'static_by_default':True, 'play_stop':True, 'reduced_motion':True,
@@ -314,7 +315,4 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    finally:
-        subprocess.run([str(BROWSER), '--session', SESSION, 'close'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20, check=False)
+    main()

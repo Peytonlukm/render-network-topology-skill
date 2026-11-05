@@ -1,0 +1,127 @@
+{
+  "default": "ocean",
+  "palettes": {
+    "ocean": {
+      "label": "海洋蓝",
+      "light": {
+        "ink": "#12375A",
+        "accent": "#0077B6",
+        "muted": "#8DA7BE",
+        "disc": "#EDF5FB",
+        "border": "#6885A0"
+      },
+      "dark": {
+        "ink": "#E0EFFF",
+        "accent": "#58BFF5",
+        "muted": "#7E9FBC",
+        "disc": "#10273D",
+        "border": "#7095B8"
+      }
+    },
+    "forest": {
+      "label": "青绿",
+      "light": {
+        "ink": "#153D35",
+        "accent": "#087B62",
+        "muted": "#9DBEB3",
+        "disc": "#EDF8F5",
+        "border": "#5D8D80"
+      },
+      "dark": {
+        "ink": "#E0F6EE",
+        "accent": "#5DD4B1",
+        "muted": "#709F90",
+        "disc": "#102F29",
+        "border": "#6FA894"
+      }
+    },
+    "violet": {
+      "label": "紫罗兰",
+      "light": {
+        "ink": "#362451",
+        "accent": "#7750B4",
+        "muted": "#B5A1CA",
+        "disc": "#F5F0FB",
+        "border": "#8C75A6"
+      },
+      "dark": {
+        "ink": "#F0E8FF",
+        "accent": "#BEA0F5",
+        "muted": "#9B81BF",
+        "disc": "#281C3D",
+        "border": "#9E85C0"
+      }
+    },
+    "copper": {
+      "label": "暖铜",
+      "light": {
+        "ink": "#4B3420",
+        "accent": "#A85B17",
+        "muted": "#C2AC8A",
+        "disc": "#FCF4E9",
+        "border": "#9E805C"
+      },
+      "dark": {
+        "ink": "#FFF0DE",
+        "accent": "#EAB574",
+        "muted": "#AC916E",
+        "disc": "#35281B",
+        "border": "#B39974"
+      }
+    },
+    "graphite": {
+      "label": "石墨灰",
+      "light": {
+        "ink": "#273340",
+        "accent": "#526478",
+        "muted": "#A7B3BF",
+        "disc": "#F1F4F7",
+        "border": "#7B8B9A"
+      },
+      "dark": {
+        "ink": "#E9EEF4",
+        "accent": "#AFBFCE",
+        "muted": "#8597A8",
+        "disc": "#202B36",
+        "border": "#91A4B7"
+      }
+    },
+    "categories": {
+      "label": "分类多彩",
+      "light": {
+        "ink": "#25364C",
+        "accent": "#0B75AD",
+        "muted": "#A4B2C2",
+        "disc": "#F1F5FA",
+        "border": "#7089A2",
+        "categories": {
+          "network": "#0B75AD",
+          "compute": "#7750B4",
+          "security": "#B42E65",
+          "storage": "#97600F",
+          "cloud": "#087F94",
+          "facilities": "#627182",
+          "endpoint": "#386C48",
+          "neutral": "#526478"
+        }
+      },
+      "dark": {
+        "ink": "#E5EEFA",
+        "accent": "#61C3EF",
+        "muted": "#7C96B0",
+        "disc": "#16283D",
+        "border": "#809DBA",
+        "categories": {
+          "network": "#61C3EF",
+          "compute": "#BEA0F5",
+          "security": "#F58BB4",
+          "storage": "#EAC078",
+          "cloud": "#5AD6E5",
+          "facilities": "#B3C0D0",
+          "endpoint": "#83CCA0",
+          "neutral": "#AFBFCE"
+        }
+      }
+    }
+  }
+}
